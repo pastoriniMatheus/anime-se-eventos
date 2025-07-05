@@ -18,24 +18,26 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { data: systemSettings = [], isLoading: settingsLoading } = useSystemSettings();
+  const { data: systemSettings, isLoading: settingsLoading } = useSystemSettings();
   const isMobile = useIsMobile();
   
-  // Buscar logo das configurações do sistema
-  const logoSetting = systemSettings.find((s: any) => s.key === 'visual_logo_url' || s.key === 'logo');
+  // Buscar logo das configurações do sistema - com verificação segura
+  const logoSetting = Array.isArray(systemSettings) 
+    ? systemSettings.find((s: any) => s.key === 'visual_logo_url' || s.key === 'logo')
+    : null;
+  
   let logoUrl = '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png'; // fallback
   
-  if (logoSetting) {
+  if (logoSetting?.value) {
     try {
       logoUrl = typeof logoSetting.value === 'string' ? 
         logoSetting.value : 
         JSON.parse(String(logoSetting.value));
     } catch (e) {
       console.error('Erro ao processar logo no header:', e);
+      // Manter logoUrl padrão em caso de erro
     }
   }
-
-  console.log('Header - Logo URL:', logoUrl);
 
   const menuItems = [
     {

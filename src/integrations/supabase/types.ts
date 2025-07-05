@@ -180,6 +180,66 @@ export type Database = {
           },
         ]
       }
+      message_history: {
+        Row: {
+          content: string
+          filter_type: string | null
+          filter_value: string | null
+          id: string
+          recipients_count: number
+          sent_at: string
+          status: string
+          type: string
+          webhook_response: string | null
+        }
+        Insert: {
+          content: string
+          filter_type?: string | null
+          filter_value?: string | null
+          id?: string
+          recipients_count?: number
+          sent_at?: string
+          status?: string
+          type: string
+          webhook_response?: string | null
+        }
+        Update: {
+          content?: string
+          filter_type?: string | null
+          filter_value?: string | null
+          id?: string
+          recipients_count?: number
+          sent_at?: string
+          status?: string
+          type?: string
+          webhook_response?: string | null
+        }
+        Relationships: []
+      }
+      message_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
       postgraduate_courses: {
         Row: {
           created_at: string | null
@@ -282,6 +342,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "scan_sessions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "scan_sessions_qr_code_id_fkey"
             columns: ["qr_code_id"]
             isOneToOne: false
@@ -317,12 +384,60 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_validations: {
+        Row: {
+          created_at: string
+          id: string
+          response_message: string | null
+          status: string
+          validated_at: string | null
+          whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          response_message?: string | null
+          status?: string
+          validated_at?: string | null
+          whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          response_message?: string | null
+          status?: string
+          validated_at?: string | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_scan_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          qr_code_id: string
+          event_id: string
+          lead_id: string
+          scanned_at: string
+          user_agent: string
+          ip_address: string
+          qr_code: Json
+          event: Json
+          lead: Json
+        }[]
+      }
+      verify_login: {
+        Args: { p_username: string; p_password: string }
+        Returns: {
+          success: boolean
+          user_data: Json
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
