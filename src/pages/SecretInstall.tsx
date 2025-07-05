@@ -90,28 +90,49 @@ const SecretInstall = () => {
         if (success) {
           setInstallationStep('complete');
           addLogEntry('✅ Sistema configurado e pronto para uso!');
+          addLogEntry('🔄 Recarregando sistema para aplicar nova conexão...');
+          
           toast({
             title: "Instalação concluída",
-            description: "Sistema instalado e configurado com sucesso",
+            description: "Sistema instalado e configurado com sucesso. Recarregando...",
           });
+          
+          // Recarregar após 2 segundos para aplicar nova configuração
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          
         } else {
           addLogEntry('⚠️ Instalação não concluída automaticamente');
           addLogEntry('🔧 Configurações salvas - você pode executar o SQL manualmente');
+          addLogEntry('🔄 Sistema será recarregado para aplicar nova conexão...');
+          
           toast({
             title: "Configuração salva",
-            description: "Execute o SQL manualmente e as configurações já estão aplicadas",
+            description: "Execute o SQL manualmente e as configurações já estão aplicadas. Recarregando...",
           });
+          
+          // Recarregar após 3 segundos mesmo se o SQL falhar
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000);
         }
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Erro na instalação';
       addLogEntry(`ERRO: ${errorMessage}`);
       addLogEntry('🔧 Configurações foram salvas - execute o SQL manualmente');
+      addLogEntry('🔄 Sistema será recarregado para aplicar nova conexão...');
       
       toast({
         title: "Configuração salva",
-        description: "Execute o SQL manualmente - as configurações já estão aplicadas",
+        description: "Execute o SQL manualmente - as configurações já estão aplicadas. Recarregando...",
       });
+      
+      // Recarregar após 3 segundos mesmo com erro
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
     } finally {
       setIsLoading(false);
     }

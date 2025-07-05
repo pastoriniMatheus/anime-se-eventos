@@ -47,6 +47,12 @@ export const updateSupabaseClient = (config: DatabaseConfig): boolean => {
       (window as any).customSupabaseClient = newClient;
       
       console.log('[Config] Cliente Supabase atualizado com sucesso');
+      
+      // Forçar recriação do cliente principal
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
       return true;
     }
     return false;
@@ -65,4 +71,19 @@ export const hasSupabaseConfig = (): boolean => {
 export const clearSupabaseConfig = (): void => {
   localStorage.removeItem('supabase-config');
   console.log('[Config] Configurações do Supabase removidas');
+};
+
+// Função para obter cliente com configuração atual
+export const getCurrentSupabaseClient = () => {
+  const savedConfig = loadSupabaseConfig();
+  
+  if (savedConfig && savedConfig.supabaseUrl && savedConfig.supabaseAnonKey) {
+    return createClient(savedConfig.supabaseUrl, savedConfig.supabaseAnonKey);
+  }
+  
+  // Fallback para cliente padrão
+  const SUPABASE_URL = "https://dobtquebpcnzjisftcfh.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0";
+  
+  return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 };
