@@ -26,11 +26,11 @@ export const useWhatsAppValidation = () => {
     try {
       console.log('🔄 Iniciando validação WhatsApp para:', numbers);
 
-      // Buscar webhook de validação nas configurações
+      // Buscar webhook de validação nas configurações  
       const { data: settings, error: settingsError } = await supabase
         .from('system_settings')
         .select('*')
-        .eq('key', 'whatsapp_validation_webhook')
+        .eq('key', 'webhook_urls')
         .single();
 
       if (settingsError || !settings?.value) {
@@ -45,7 +45,21 @@ export const useWhatsAppValidation = () => {
         return true;
       }
 
-      const webhookUrl = settings.value;
+      const webhookUrls = typeof settings.value === 'object' ? settings.value as any : JSON.parse(settings.value as string);
+      const webhookUrl = webhookUrls?.whatsappValidation;
+      
+      if (!webhookUrl) {
+        console.log('❌ Webhook de validação não configurado');
+        toast({
+          title: "Configuração necessária",
+          description: "Configure o webhook de validação WhatsApp nas configurações do sistema para usar esta funcionalidade.",
+          variant: "destructive",
+        });
+        setIsValidating(false);
+        setValidationResult('valid'); // Permitir prosseguir sem validação se não configurado
+        return true;
+      }
+
       console.log('✅ Webhook encontrado:', webhookUrl);
 
       // Gerar ID único para a validação

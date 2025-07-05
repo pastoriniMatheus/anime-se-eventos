@@ -44,11 +44,10 @@ export const useAuthProvider = () => {
       console.log('Tentando fazer login:', username);
       console.log('Cliente Supabase atual:', supabase);
       
-      const { data, error } = await supabase
-        .rpc('verify_login', {
-          p_username: username,
-          p_password: password
-        });
+      const { data, error } = await supabase.rpc('verify_login', {
+        p_username: username,
+        p_password: password
+      });
 
       if (error) {
         console.error('Erro na verificação:', error);
