@@ -38,17 +38,17 @@ export type Database = {
       }
       courses: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           name: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           name: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           name?: string
         }
@@ -56,19 +56,22 @@ export type Database = {
       }
       events: {
         Row: {
-          created_at: string
+          created_at: string | null
+          description: string | null
           id: string
           name: string
           whatsapp_number: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
+          description?: string | null
           id?: string
           name: string
           whatsapp_number?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
+          description?: string | null
           id?: string
           name?: string
           whatsapp_number?: string | null
@@ -78,19 +81,19 @@ export type Database = {
       lead_statuses: {
         Row: {
           color: string
-          created_at: string
+          created_at: string | null
           id: string
           name: string
         }
         Insert: {
           color?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           name: string
         }
         Update: {
           color?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
           name?: string
         }
@@ -100,50 +103,44 @@ export type Database = {
         Row: {
           course_id: string | null
           course_type: string | null
-          created_at: string
-          email: string
+          created_at: string | null
+          email: string | null
           event_id: string | null
           id: string
           name: string
           postgraduate_course_id: string | null
           scan_session_id: string | null
-          shift: string | null
-          source: string | null
           status_id: string | null
-          updated_at: string
-          whatsapp: string
+          updated_at: string | null
+          whatsapp: string | null
         }
         Insert: {
           course_id?: string | null
           course_type?: string | null
-          created_at?: string
-          email: string
+          created_at?: string | null
+          email?: string | null
           event_id?: string | null
           id?: string
           name: string
           postgraduate_course_id?: string | null
           scan_session_id?: string | null
-          shift?: string | null
-          source?: string | null
           status_id?: string | null
-          updated_at?: string
-          whatsapp: string
+          updated_at?: string | null
+          whatsapp?: string | null
         }
         Update: {
           course_id?: string | null
           course_type?: string | null
-          created_at?: string
-          email?: string
+          created_at?: string | null
+          email?: string | null
           event_id?: string | null
           id?: string
           name?: string
           postgraduate_course_id?: string | null
           scan_session_id?: string | null
-          shift?: string | null
-          source?: string | null
           status_id?: string | null
-          updated_at?: string
-          whatsapp?: string
+          updated_at?: string | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
@@ -183,79 +180,19 @@ export type Database = {
           },
         ]
       }
-      message_history: {
-        Row: {
-          content: string
-          filter_type: string | null
-          filter_value: string | null
-          id: string
-          recipients_count: number
-          sent_at: string
-          status: string
-          type: string
-          webhook_response: string | null
-        }
-        Insert: {
-          content: string
-          filter_type?: string | null
-          filter_value?: string | null
-          id?: string
-          recipients_count?: number
-          sent_at?: string
-          status?: string
-          type: string
-          webhook_response?: string | null
-        }
-        Update: {
-          content?: string
-          filter_type?: string | null
-          filter_value?: string | null
-          id?: string
-          recipients_count?: number
-          sent_at?: string
-          status?: string
-          type?: string
-          webhook_response?: string | null
-        }
-        Relationships: []
-      }
-      message_templates: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          name: string
-          type: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          id?: string
-          name: string
-          type: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          name?: string
-          type?: string
-        }
-        Relationships: []
-      }
       postgraduate_courses: {
         Row: {
-          created_at: string
+          created_at: string | null
           id: string
           name: string
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           name: string
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           id?: string
           name?: string
         }
@@ -263,31 +200,28 @@ export type Database = {
       }
       qr_codes: {
         Row: {
-          created_at: string
+          created_at: string | null
           event_id: string | null
+          full_url: string
           id: string
-          original_url: string
-          scans: number
           short_url: string
           tracking_id: string | null
           type: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           event_id?: string | null
+          full_url: string
           id?: string
-          original_url: string
-          scans?: number
           short_url: string
           tracking_id?: string | null
           type?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           event_id?: string | null
+          full_url?: string
           id?: string
-          original_url?: string
-          scans?: number
           short_url?: string
           tracking_id?: string | null
           type?: string | null
@@ -304,39 +238,39 @@ export type Database = {
       }
       scan_sessions: {
         Row: {
-          converted: boolean
+          converted: boolean | null
           converted_at: string | null
-          created_at: string
+          created_at: string | null
           event_id: string | null
           id: string
           ip_address: string | null
           lead_id: string | null
           qr_code_id: string | null
-          scanned_at: string
+          scanned_at: string | null
           user_agent: string | null
         }
         Insert: {
-          converted?: boolean
+          converted?: boolean | null
           converted_at?: string | null
-          created_at?: string
+          created_at?: string | null
           event_id?: string | null
           id?: string
           ip_address?: string | null
           lead_id?: string | null
           qr_code_id?: string | null
-          scanned_at?: string
+          scanned_at?: string | null
           user_agent?: string | null
         }
         Update: {
-          converted?: boolean
+          converted?: boolean | null
           converted_at?: string | null
-          created_at?: string
+          created_at?: string | null
           event_id?: string | null
           id?: string
           ip_address?: string | null
           lead_id?: string | null
           qr_code_id?: string | null
-          scanned_at?: string
+          scanned_at?: string | null
           user_agent?: string | null
         }
         Relationships: [
@@ -348,13 +282,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "scan_sessions_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "scan_sessions_qr_code_id_fkey"
             columns: ["qr_code_id"]
             isOneToOne: false
@@ -363,81 +290,12 @@ export type Database = {
           },
         ]
       }
-      system_settings: {
-        Row: {
-          id: string
-          key: string
-          updated_at: string
-          value: Json
-        }
-        Insert: {
-          id?: string
-          key: string
-          updated_at?: string
-          value: Json
-        }
-        Update: {
-          id?: string
-          key?: string
-          updated_at?: string
-          value?: Json
-        }
-        Relationships: []
-      }
-      whatsapp_validations: {
-        Row: {
-          created_at: string
-          id: string
-          response_message: string | null
-          status: string
-          validated_at: string | null
-          whatsapp: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          response_message?: string | null
-          status?: string
-          validated_at?: string | null
-          whatsapp: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          response_message?: string | null
-          status?: string
-          validated_at?: string | null
-          whatsapp?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_scan_sessions: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          qr_code_id: string
-          event_id: string
-          lead_id: string
-          scanned_at: string
-          user_agent: string
-          ip_address: string
-          qr_code: Json
-          event: Json
-          lead: Json
-        }[]
-      }
-      verify_login: {
-        Args: { p_username: string; p_password: string }
-        Returns: {
-          success: boolean
-          user_data: Json
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
