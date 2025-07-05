@@ -6,13 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Database, Server, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DatabaseConfig {
-  type: 'supabase' | 'postgresql' | 'mysql';
+  type: 'supabase' | 'postgresql';
   host?: string;
   port?: number;
   database?: string;
@@ -25,7 +24,7 @@ interface DatabaseConfig {
 
 const SecretInstall = () => {
   const { toast } = useToast();
-  const [installationStep, setInstallationStep] = useState<'config' | 'verify' | 'install' | 'complete'>('config');
+  const [installationStep, setInstallationStep] = useState<'config' | 'verify' | 'complete'>('config');
   const [isLoading, setIsLoading] = useState(false);
   const [config, setConfig] = useState<DatabaseConfig>({ type: 'supabase' });
   const [existingTables, setExistingTables] = useState<string[]>([]);
@@ -52,101 +51,79 @@ const SecretInstall = () => {
   }
 
   const addLog = (message: string) => {
-    setInstallationLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `${timestamp}: ${message}`;
+    setInstallationLog(prev => [...prev, logMessage]);
+    console.log('[SecretInstall]', logMessage);
   };
 
   const testConnection = async () => {
     setIsLoading(true);
-    addLog('Testando conexão com o banco de dados...');
+    setInstallationLog([]);
+    addLog('Iniciando teste de conexão...');
 
     try {
+      // Validar configuração antes de enviar
       if (config.type === 'supabase') {
-        // Testar conexão Supabase
-        const { data, error } = await supabase.functions.invoke('database-installer', {
-          body: {
-            action: 'test_connection',
-            config: config
-          }
-        });
-
-        if (error) throw error;
+        if (!config.supabaseUrl || !config.supabaseServiceKey) {
+          throw new Error('URL do Supabase e Service Key são obrigatórios');
+        }
         
-        addLog('Conexão Supabase estabelecida com sucesso');
-        setExistingTables(data.existingTables || []);
-      } else {
-        // Testar conexão banco personalizado
-        const response = await fetch('/api/test-db-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(config)
-        });
+        if (!config.supabaseUrl.includes('supabase.co')) {
+          throw new Error('URL do Supabase deve conter "supabase.co"');
+        }
 
-        if (!response.ok) throw new Error('Falha na conexão');
-        
-        const result = await response.json();
-        setExistingTables(result.existingTables || []);
-        addLog('Conexão com banco personalizado estabelecida');
+        addLog('Configuração Supabase validada localmente');
       }
 
-      setInstallationStep('verify');
-      toast({
-        title: "Conexão bem-sucedida",
-        description: "Banco de dados acessível. Verificando estrutura...",
-      });
+      addLog('Enviando requisição para Edge Function...');
 
-    } catch (error: any) {
-      addLog(`Erro na conexão: ${error.message}`);
-      toast({
-        title: "Erro de conexão",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const performInstallation = async () => {
-    setIsLoading(true);
-    setInstallationStep('install');
-    addLog('Iniciando instalação do banco de dados...');
-
-    try {
       const { data, error } = await supabase.functions.invoke('database-installer', {
         body: {
-          action: 'install',
-          config: config,
-          overwriteTables: existingTables.length > 0
+          action: 'test_connection',
+          config: config
         }
       });
 
-      if (error) throw error;
+      addLog('Resposta recebida da Edge Function');
 
-      addLog('Todas as tabelas criadas com sucesso');
-      addLog('Dados iniciais inseridos');
-      addLog('Configuração salva');
-      addLog('Sistema instalado e pronto para uso');
+      if (error) {
+        addLog(`Erro da Edge Function: ${error.message}`);
+        throw new Error(`Erro na Edge Function: ${error.message}`);
+      }
 
-      setInstallationStep('complete');
+      if (!data.success) {
+        addLog(`Erro nos dados: ${data.error || 'Erro desconhecido'}`);
+        throw new Error(data.error || 'Falha na conexão');
+      }
+      
+      addLog('Conexão estabelecida com sucesso!');
+      setExistingTables(data.existingTables || []);
+      
+      if (data.existingTables && data.existingTables.length > 0) {
+        addLog(`Encontradas ${data.existingTables.length} tabelas existentes`);
+      } else {
+        addLog('Nenhuma tabela existente encontrada - instalação limpa');
+      }
+
+      setInstallationStep('verify');
       
       toast({
-        title: "Instalação concluída",
-        description: "Sistema instalado com sucesso! Redirecionando...",
+        title: "Conexão bem-sucedida",
+        description: data.message || "Banco de dados acessível",
       });
-
-      // Redirecionar após 3 segundos
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 3000);
 
     } catch (error: any) {
-      addLog(`Erro na instalação: ${error.message}`);
+      const errorMessage = error.message || 'Erro desconhecido';
+      addLog(`ERRO: ${errorMessage}`);
+      
+      console.error('[SecretInstall] Error details:', error);
+      
       toast({
-        title: "Erro na instalação",
-        description: error.message,
+        title: "Erro de conexão",
+        description: errorMessage,
         variant: "destructive",
       });
-      setInstallationStep('verify');
     } finally {
       setIsLoading(false);
     }
@@ -168,9 +145,10 @@ const SecretInstall = () => {
             value={config.supabaseUrl || ''}
             onChange={(e) => setConfig({ ...config, supabaseUrl: e.target.value })}
           />
+          <p className="text-xs text-gray-500">Exemplo: https://abc123.supabase.co</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="supabase-anon">Anon Key</Label>
+          <Label htmlFor="supabase-anon">Anon Key (Opcional)</Label>
           <Input
             id="supabase-anon"
             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
@@ -179,7 +157,7 @@ const SecretInstall = () => {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="supabase-service">Service Role Key</Label>
+          <Label htmlFor="supabase-service">Service Role Key *</Label>
           <Input
             id="supabase-service"
             type="password"
@@ -187,59 +165,15 @@ const SecretInstall = () => {
             value={config.supabaseServiceKey || ''}
             onChange={(e) => setConfig({ ...config, supabaseServiceKey: e.target.value })}
           />
+          <p className="text-xs text-gray-500">Necessário para criar/modificar tabelas</p>
         </div>
       </TabsContent>
 
       <TabsContent value="postgresql" className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="host">Host</Label>
-            <Input
-              id="host"
-              placeholder="localhost"
-              value={config.host || ''}
-              onChange={(e) => setConfig({ ...config, host: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="port">Porta</Label>
-            <Input
-              id="port"
-              type="number"
-              placeholder="5432"
-              value={config.port || ''}
-              onChange={(e) => setConfig({ ...config, port: parseInt(e.target.value) })}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="database">Database</Label>
-          <Input
-            id="database"
-            placeholder="meu_sistema"
-            value={config.database || ''}
-            onChange={(e) => setConfig({ ...config, database: e.target.value })}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Usuário</Label>
-            <Input
-              id="username"
-              placeholder="postgres"
-              value={config.username || ''}
-              onChange={(e) => setConfig({ ...config, username: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              value={config.password || ''}
-              onChange={(e) => setConfig({ ...config, password: e.target.value })}
-            />
-          </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm text-amber-800">
+            PostgreSQL customizado ainda não está implementado. Use Supabase por enquanto.
+          </p>
         </div>
       </TabsContent>
     </Tabs>
@@ -260,20 +194,20 @@ const SecretInstall = () => {
         <CardContent className="space-y-6">
           {/* Progress indicator */}
           <div className="flex items-center justify-between">
-            {['config', 'verify', 'install', 'complete'].map((step, index) => (
+            {['config', 'verify', 'complete'].map((step, index) => (
               <div key={step} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   installationStep === step ? 'bg-blue-600 text-white' :
-                  ['config', 'verify', 'install', 'complete'].indexOf(installationStep) > index ? 'bg-green-600 text-white' :
+                  ['config', 'verify', 'complete'].indexOf(installationStep) > index ? 'bg-green-600 text-white' :
                   'bg-gray-200 text-gray-600'
                 }`}>
-                  {['config', 'verify', 'install', 'complete'].indexOf(installationStep) > index ? (
+                  {['config', 'verify', 'complete'].indexOf(installationStep) > index ? (
                     <Check className="h-4 w-4" />
                   ) : (
                     index + 1
                   )}
                 </div>
-                {index < 3 && <div className="w-16 h-1 bg-gray-200 mx-2" />}
+                {index < 2 && <div className="w-24 h-1 bg-gray-200 mx-2" />}
               </div>
             ))}
           </div>
@@ -333,33 +267,25 @@ const SecretInstall = () => {
                 </div>
               )}
 
-              <Button onClick={performInstallation} className="w-full">
+              <Button 
+                onClick={() => toast({ title: "Em desenvolvimento", description: "Instalação será implementada em breve" })}
+                className="w-full"
+              >
                 <Database className="h-4 w-4 mr-2" />
                 Iniciar Instalação
               </Button>
             </div>
           )}
 
-          {(installationStep === 'install' || installationStep === 'complete') && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 border rounded-lg p-4 max-h-64 overflow-y-auto">
-                <h4 className="font-medium mb-2">Log de Instalação:</h4>
-                <div className="space-y-1 text-sm font-mono">
-                  {installationLog.map((log, index) => (
-                    <div key={index} className="text-gray-700">{log}</div>
-                  ))}
-                </div>
+          {/* Log de instalação */}
+          {installationLog.length > 0 && (
+            <div className="bg-gray-50 border rounded-lg p-4 max-h-64 overflow-y-auto">
+              <h4 className="font-medium mb-2">Log de Instalação:</h4>
+              <div className="space-y-1 text-sm font-mono">
+                {installationLog.map((log, index) => (
+                  <div key={index} className="text-gray-700">{log}</div>
+                ))}
               </div>
-
-              {installationStep === 'complete' && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <Check className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <h4 className="font-medium text-green-800 mb-1">Instalação Concluída!</h4>
-                  <p className="text-sm text-green-700">
-                    Sistema instalado com sucesso. Redirecionando para login...
-                  </p>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
