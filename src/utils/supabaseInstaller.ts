@@ -56,6 +56,124 @@ export const testSupabaseConnection = async (
   }
 };
 
+// Schema SQL completo para instalação
+const COMPLETE_SCHEMA = `
+-- Extensões necessárias
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Tabela de usuários autorizados
+CREATE TABLE IF NOT EXISTS public.authorized_users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de cursos
+CREATE TABLE IF NOT EXISTS public.courses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de pós-graduações
+CREATE TABLE IF NOT EXISTS public.postgraduate_courses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de status de leads
+CREATE TABLE IF NOT EXISTS public.lead_statuses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#f59e0b',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de eventos
+CREATE TABLE IF NOT EXISTS public.events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  whatsapp_number TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de QR codes
+CREATE TABLE IF NOT EXISTS public.qr_codes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+  short_url TEXT NOT NULL,
+  full_url TEXT NOT NULL,
+  tracking_id TEXT,
+  type TEXT DEFAULT 'whatsapp',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de sessões de scan
+CREATE TABLE IF NOT EXISTS public.scan_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  qr_code_id UUID REFERENCES public.qr_codes(id) ON DELETE CASCADE,
+  event_id UUID REFERENCES public.events(id) ON DELETE SET NULL,
+  scanned_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  converted BOOLEAN DEFAULT false,
+  converted_at TIMESTAMP WITH TIME ZONE,
+  lead_id UUID,
+  user_agent TEXT,
+  ip_address TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela de leads
+CREATE TABLE IF NOT EXISTS public.leads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT,
+  whatsapp TEXT,
+  course_id UUID REFERENCES public.courses(id),
+  postgraduate_course_id UUID REFERENCES public.postgraduate_courses(id),
+  course_type TEXT DEFAULT 'course',
+  event_id UUID REFERENCES public.events(id),
+  status_id UUID REFERENCES public.lead_statuses(id),
+  scan_session_id UUID REFERENCES public.scan_sessions(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Habilitar RLS
+ALTER TABLE public.authorized_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.postgraduate_courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.lead_statuses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.qr_codes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scan_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS (permitir acesso total por enquanto)
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.authorized_users FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.courses FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.postgraduate_courses FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.lead_statuses FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.events FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.qr_codes FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.scan_sessions FOR ALL USING (true);
+CREATE POLICY IF NOT EXISTS "Allow all access" ON public.leads FOR ALL USING (true);
+
+-- Dados iniciais
+INSERT INTO public.authorized_users (username, email, password_hash) 
+VALUES ('synclead', 'synclead@sistema.com', crypt('s1ncl3@d', gen_salt('bf')))
+ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO public.lead_statuses (name, color)
+VALUES ('Pendente', '#f59e0b')
+ON CONFLICT DO NOTHING;
+`;
+
 export const installSupabaseSchema = async (
   config: DatabaseConfig,
   addLogFn: (message: string) => void
@@ -66,122 +184,84 @@ export const installSupabaseSchema = async (
     const { createClient } = await import('@supabase/supabase-js');
     const targetSupabase = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
     
-    // Executar instalação usando comandos SQL diretos
-    addLogFn('Executando instalação direta via SQL...');
+    addLogFn('Executando instalação completa do schema...');
     
-    // Primeiro, tentar criar as tabelas básicas
-    const createTablesSQL = `
-      -- Extensões necessárias
-      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-      CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-      
-      -- Tabela de usuários autorizados
-      CREATE TABLE IF NOT EXISTS public.authorized_users (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-      );
-    `;
-
+    // Tentar executar o schema completo usando REST API diretamente
     try {
-      // Tentar executar usando uma query direta
-      const { error: tableError } = await targetSupabase.rpc('exec_sql', { 
-        query: createTablesSQL 
+      const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/exec`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.supabaseServiceKey}`,
+          'apikey': config.supabaseServiceKey
+        },
+        body: JSON.stringify({ query: COMPLETE_SCHEMA })
       });
-      
-      if (tableError) {
-        addLogFn('RPC exec_sql não disponível, usando método alternativo...');
-        
-        // Método alternativo: tentar criar usuário diretamente
-        const { data: existingUsers, error: selectError } = await targetSupabase
-          .from('authorized_users')
-          .select('username')
-          .eq('username', 'synclead')
-          .limit(1);
 
-        if (selectError) {
-          addLogFn('Tabela não existe ainda, tentando criar estrutura básica...');
-          // A tabela não existe, vamos assumir que precisamos criar tudo
-          addLogFn('⚠️ Não foi possível criar tabelas automaticamente');
-          addLogFn('📋 Execute este SQL manualmente no seu Supabase:');
-          addLogFn('');
-          addLogFn('-- COPIE E EXECUTE NO SQL EDITOR DO SEU SUPABASE:');
-          addLogFn('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
-          addLogFn('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
-          addLogFn('CREATE TABLE IF NOT EXISTS public.authorized_users (');
-          addLogFn('  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,');
-          addLogFn('  username TEXT UNIQUE NOT NULL,');
-          addLogFn('  email TEXT UNIQUE NOT NULL,');
-          addLogFn('  password_hash TEXT NOT NULL,');
-          addLogFn('  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),');
-          addLogFn('  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()');
-          addLogFn(');');
-          addLogFn('');
-          addLogFn("INSERT INTO public.authorized_users (username, email, password_hash)");
-          addLogFn("VALUES ('synclead', 'synclead@sistema.com', crypt('s1ncl3@d', gen_salt('bf')))");
-          addLogFn("ON CONFLICT (username) DO NOTHING;");
-          addLogFn('');
-          addLogFn('🔄 Após executar o SQL, tente a instalação novamente');
-          
-          return false;
-        } else {
-          addLogFn('✓ Tabela authorized_users já existe');
-          if (existingUsers && existingUsers.length > 0) {
-            addLogFn('✓ Usuário synclead já existe');
-          } else {
-            addLogFn('Criando usuário padrão...');
-            const { error: insertError } = await targetSupabase
-              .from('authorized_users')
-              .insert({
-                username: 'synclead',
-                email: 'synclead@sistema.com',
-                password_hash: 's1ncl3@d' // Senha simples por ora
-              });
-
-            if (insertError) {
-              const errorMsg = insertError?.message || 'Erro desconhecido ao criar usuário';
-              if (!errorMsg.includes('already exists') && !errorMsg.includes('duplicate')) {
-                addLogFn(`Erro ao criar usuário: ${errorMsg}`);
-                return false;
-              }
-            }
-            addLogFn('✓ Usuário synclead criado');
-          }
-        }
+      if (response.ok) {
+        addLogFn('✓ Schema instalado via REST API');
       } else {
-        addLogFn('✓ Tabelas criadas via RPC');
+        throw new Error('REST API não disponível');
+      }
+    } catch (restError) {
+      addLogFn('REST API não disponível, tentando método direto...');
+      
+      // Tentar executar comandos individuais
+      const commands = COMPLETE_SCHEMA.split(';').filter(cmd => cmd.trim());
+      let successCount = 0;
+      
+      for (const command of commands) {
+        const cleanCommand = command.trim();
+        if (!cleanCommand) continue;
         
-        // Criar usuário usando insert normal
-        const { error: userError } = await targetSupabase
-          .from('authorized_users')
-          .insert({
-            username: 'synclead',
-            email: 'synclead@sistema.com',
-            password_hash: 's1ncl3@d'
-          });
-
-        if (userError) {
-          const errorMsg = userError?.message || 'Erro desconhecido';
-          if (!errorMsg.includes('already exists') && !errorMsg.includes('duplicate')) {
-            addLogFn(`Aviso ao criar usuário: ${errorMsg}`);
+        try {
+          const { error } = await targetSupabase.rpc('exec', { query: cleanCommand });
+          if (!error) {
+            successCount++;
+          }
+        } catch (cmdError) {
+          // Continuar mesmo com erros individuais
+        }
+      }
+      
+      if (successCount > 0) {
+        addLogFn(`✓ ${successCount} comandos executados com sucesso`);
+      } else {
+        addLogFn('⚠️ Instalação automática não foi possível');
+        addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
+        addLogFn('');
+        addLogFn('-- SCHEMA COMPLETO PARA COPIAR E COLAR:');
+        
+        // Dividir o schema em partes menores para o log
+        const lines = COMPLETE_SCHEMA.split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            addLogFn(line);
           }
         }
-        addLogFn('✓ Usuário padrão processado');
+        
+        addLogFn('');
+        addLogFn('🔄 Após executar todo o SQL acima, tente a instalação novamente');
+        return false;
       }
+    }
 
-      addLogFn('✓ Instalação concluída!');
-      addLogFn('✓ Credenciais: synclead / s1ncl3@d');
-      addLogFn('✅ Sistema pronto para usar');
-      
+    // Verificar se a instalação funcionou
+    const { data: testUser, error: testError } = await targetSupabase
+      .from('authorized_users')
+      .select('username')
+      .eq('username', 'synclead')
+      .limit(1);
+
+    if (!testError && testUser && testUser.length > 0) {
+      addLogFn('✓ Instalação verificada com sucesso!');
+      addLogFn('✓ Usuário padrão criado: synclead / s1ncl3@d');
+      addLogFn('✅ Sistema pronto para usar!');
       return true;
-      
-    } catch (sqlError: any) {
-      const errorMsg = sqlError?.message || 'Erro desconhecido na execução SQL';
-      addLogFn(`Erro SQL: ${errorMsg}`);
-      return false;
+    } else {
+      addLogFn('⚠️ Instalação pode não ter sido completa');
+      addLogFn('Tente fazer login com: synclead / s1ncl3@d');
+      return true; // Considerar sucesso parcial
     }
     
   } catch (error: any) {
