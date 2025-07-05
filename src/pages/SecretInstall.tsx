@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,6 +70,11 @@ const SecretInstall = () => {
           throw new Error('URL do Supabase deve conter "supabase.co"');
         }
 
+        // Validar formato da Service Key
+        if (!config.supabaseServiceKey.startsWith('eyJ')) {
+          throw new Error('Service Key deve ser um JWT válido começando com "eyJ"');
+        }
+
         const cleanUrl = config.supabaseUrl.replace(/\/$/, '');
         addLog('Configuração Supabase validada localmente');
         addLog(`Testando conexão com: ${cleanUrl}`);
@@ -79,29 +83,32 @@ const SecretInstall = () => {
           const { createClient } = await import('@supabase/supabase-js');
           const targetSupabase = createClient(cleanUrl, config.supabaseServiceKey);
           
-          addLog('Testando conexão básica...');
+          addLog('Testando Service Key...');
           
-          // Test simple connection
-          const { error: testError } = await targetSupabase
-            .from('information_schema')
-            .select('*')
+          // Test with a simple query that requires service role
+          const { data, error } = await targetSupabase
+            .from('information_schema.tables')
+            .select('table_name')
+            .eq('table_schema', 'public')
             .limit(1);
 
-          if (testError && testError.message.includes('does not exist')) {
-            addLog('Conexão estabelecida com sucesso!');
-          } else if (testError && testError.message.includes('permission denied')) {
-            addLog('Conexão estabelecida com sucesso! (Permissões limitadas - normal)');
-          } else if (testError) {
-            // Try alternative test
-            const { error: altError } = await targetSupabase.rpc('version');
-            if (altError && altError.message.includes('does not exist')) {
-              addLog('Conexão estabelecida com sucesso!');
-            } else {
-              addLog('Conexão estabelecida com sucesso!');
+          if (error) {
+            if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
+              throw new Error('Service Key inválida - verifique se está correta');
             }
-          } else {
-            addLog('Conexão estabelecida com sucesso!');
+            if (error.message.includes('permission denied') || error.message.includes('insufficient_privilege')) {
+              throw new Error('Service Key não tem permissões suficientes');
+            }
+            // Se não conseguir acessar information_schema, tenta uma operação simples
+            addLog('Tentando validação alternativa...');
+            const { error: altError } = await targetSupabase.rpc('version');
+            if (altError && altError.message.includes('Invalid API key')) {
+              throw new Error('Service Key inválida - verifique se está correta');
+            }
           }
+
+          addLog('Service Key validada com sucesso!');
+          addLog('Conexão estabelecida com sucesso!');
 
           setExistingTables([]);
           addLog('Pronto para instalação - instalação limpa será realizada');
@@ -109,7 +116,7 @@ const SecretInstall = () => {
           
           toast({
             title: "Conexão bem-sucedida",
-            description: "Banco de dados acessível e validado",
+            description: "Banco de dados acessível e Service Key validada",
           });
 
         } catch (directError: any) {
@@ -134,19 +141,55 @@ const SecretInstall = () => {
     }
   };
 
-  const executeSQL = async (supabaseClient: any, sql: string): Promise<boolean> => {
+  const executeSQL = async (supabaseClient: any, sql: string, description: string): Promise<boolean> => {
     try {
-      const { error } = await supabaseClient.rpc('sql', {
-        query: sql
-      });
+      addLog(`Executando: ${description}`);
+      
+      // Para comandos SQL complexos, usar a função sql diretamente
+      const { data, error } = await supabaseClient.rpc('sql', { query: sql });
       
       if (error) {
-        console.log('SQL Error:', error.message);
+        addLog(`ERRO em ${description}: ${error.message}`);
+        console.error('SQL Error:', error);
         return false;
       }
+      
+      addLog(`✓ ${description} - Concluído`);
       return true;
-    } catch (error) {
-      console.log('Execute SQL Error:', error);
+    } catch (error: any) {
+      addLog(`ERRO em ${description}: ${error.message}`);
+      console.error('Execute SQL Error:', error);
+      return false;
+    }
+  };
+
+  const verifyInstallation = async (supabaseClient: any): Promise<boolean> => {
+    try {
+      addLog('Verificando se as tabelas foram criadas...');
+      
+      const { data, error } = await supabaseClient
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .in('table_name', ['authorized_users', 'courses', 'events', 'leads']);
+
+      if (error) {
+        addLog(`Erro na verificação: ${error.message}`);
+        return false;
+      }
+
+      const createdTables = data?.map(t => t.table_name) || [];
+      addLog(`Tabelas encontradas: ${createdTables.join(', ')}`);
+      
+      if (createdTables.length >= 4) {
+        addLog('✓ Instalação verificada - todas as tabelas principais foram criadas');
+        return true;
+      } else {
+        addLog(`✗ Instalação incompleta - encontradas apenas ${createdTables.length} tabelas`);
+        return false;
+      }
+    } catch (error: any) {
+      addLog(`Erro na verificação: ${error.message}`);
       return false;
     }
   };
@@ -158,17 +201,21 @@ const SecretInstall = () => {
 
     try {
       if (config.type === 'supabase') {
-        addLog('Executando script de criação do banco de dados...');
-        
         const { createClient } = await import('@supabase/supabase-js');
         const targetSupabase = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
         
         // SQL consolidado para instalação
-        const installationSQL = `
+        const installationSteps = [
+          {
+            sql: `
 -- Extensões necessárias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
+            `,
+            description: 'Extensões do PostgreSQL'
+          },
+          {
+            sql: `
 -- Tabela de usuários autorizados
 CREATE TABLE IF NOT EXISTS public.authorized_users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -200,7 +247,11 @@ CREATE TABLE IF NOT EXISTS public.lead_statuses (
   color TEXT NOT NULL DEFAULT '#f59e0b',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-
+            `,
+            description: 'Tabelas básicas do sistema'
+          },
+          {
+            sql: `
 -- Tabela de eventos
 CREATE TABLE IF NOT EXISTS public.events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -220,7 +271,11 @@ CREATE TABLE IF NOT EXISTS public.qr_codes (
   type TEXT DEFAULT 'whatsapp',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-
+            `,
+            description: 'Tabelas de eventos e QR codes'
+          },
+          {
+            sql: `
 -- Tabela de sessões de scan
 CREATE TABLE IF NOT EXISTS public.scan_sessions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -250,7 +305,11 @@ CREATE TABLE IF NOT EXISTS public.leads (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-
+            `,
+            description: 'Tabelas de leads e sessões'
+          },
+          {
+            sql: `
 -- Tabela de histórico de mensagens
 CREATE TABLE IF NOT EXISTS public.message_history (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -279,13 +338,12 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
-        `;
-
-        addLog('Criando tabelas principais...');
-        await executeSQL(targetSupabase, installationSQL);
-
-        addLog('Criando índices...');
-        const indexesSQL = `
+            `,
+            description: 'Tabelas auxiliares'
+          },
+          {
+            sql: `
+-- Criar índices
 CREATE INDEX IF NOT EXISTS idx_qr_codes_tracking_id ON public.qr_codes(tracking_id);
 CREATE INDEX IF NOT EXISTS idx_qr_codes_type ON public.qr_codes(type);
 CREATE INDEX IF NOT EXISTS idx_scan_sessions_qr_code_id ON public.scan_sessions(qr_code_id);
@@ -295,11 +353,12 @@ CREATE INDEX IF NOT EXISTS idx_scan_sessions_scanned_at ON public.scan_sessions(
 CREATE INDEX IF NOT EXISTS idx_leads_scan_session_id ON public.leads(scan_session_id);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_validations_status ON public.whatsapp_validations(status);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_validations_created_at ON public.whatsapp_validations(created_at);
-        `;
-        await executeSQL(targetSupabase, indexesSQL);
-
-        addLog('Configurando RLS (Row Level Security)...');
-        const rlsSQL = `
+            `,
+            description: 'Índices para performance'
+          },
+          {
+            sql: `
+-- Habilitar RLS
 ALTER TABLE public.authorized_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.postgraduate_courses ENABLE ROW LEVEL SECURITY;
@@ -311,11 +370,12 @@ ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.message_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_validations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
-        `;
-        await executeSQL(targetSupabase, rlsSQL);
-
-        addLog('Criando políticas de acesso...');
-        const policiesSQL = `
+            `,
+            description: 'Configuração de segurança RLS'
+          },
+          {
+            sql: `
+-- Políticas RLS (permitir acesso total por enquanto)
 CREATE POLICY IF NOT EXISTS "Allow all access" ON public.authorized_users FOR ALL USING (true);
 CREATE POLICY IF NOT EXISTS "Allow all access" ON public.courses FOR ALL USING (true);
 CREATE POLICY IF NOT EXISTS "Allow all access" ON public.postgraduate_courses FOR ALL USING (true);
@@ -327,11 +387,12 @@ CREATE POLICY IF NOT EXISTS "Allow all access" ON public.leads FOR ALL USING (tr
 CREATE POLICY IF NOT EXISTS "Allow all access" ON public.message_history FOR ALL USING (true);
 CREATE POLICY IF NOT EXISTS "Allow all access" ON public.whatsapp_validations FOR ALL USING (true);
 CREATE POLICY IF NOT EXISTS "Allow all access" ON public.system_settings FOR ALL USING (true);
-        `;
-        await executeSQL(targetSupabase, policiesSQL);
-
-        addLog('Criando funções do sistema...');
-        const functionsSQL = `
+            `,
+            description: 'Políticas de acesso'
+          },
+          {
+            sql: `
+-- Função para verificar login
 CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
 RETURNS TABLE(success BOOLEAN, user_data JSON)
 LANGUAGE plpgsql
@@ -358,36 +419,59 @@ BEGIN
   END IF;
 END;
 $$;
-        `;
-        await executeSQL(targetSupabase, functionsSQL);
-
-        addLog('Inserindo dados iniciais...');
-        const initialDataSQL = `
+            `,
+            description: 'Funções do sistema'
+          },
+          {
+            sql: `
+-- Inserir dados iniciais
 INSERT INTO public.authorized_users (username, email, password_hash) 
-VALUES ('cesmac', 'cesmac@sistema.com', crypt('cesmac@2025', gen_salt('bf')))
+VALUES ('synclead', 'synclead@sistema.com', crypt('s1ncl3@d', gen_salt('bf')))
 ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO public.lead_statuses (name, color)
 VALUES ('Pendente', '#f59e0b')
 ON CONFLICT DO NOTHING;
-        `;
-        await executeSQL(targetSupabase, initialDataSQL);
+            `,
+            description: 'Dados iniciais'
+          }
+        ];
 
-        addLog('Sistema instalado com sucesso!');
-        addLog('Todas as tabelas foram criadas');
-        addLog('Usuário padrão criado: cesmac / cesmac@2025');
-        
-        setInstallationStep('complete');
-        
-        toast({
-          title: "Instalação concluída",
-          description: "Sistema instalado com sucesso no banco de dados",
-        });
+        let allSuccess = true;
+        for (const step of installationSteps) {
+          const success = await executeSQL(targetSupabase, step.sql, step.description);
+          if (!success) {
+            allSuccess = false;
+            break;
+          }
+        }
+
+        if (allSuccess) {
+          // Verificar se a instalação realmente funcionou
+          const installationVerified = await verifyInstallation(targetSupabase);
+          
+          if (installationVerified) {
+            addLog('✓ Sistema instalado com sucesso!');
+            addLog('✓ Todas as tabelas foram criadas e verificadas');
+            addLog('✓ Usuário padrão criado: synclead / s1ncl3@d');
+            
+            setInstallationStep('complete');
+            
+            toast({
+              title: "Instalação concluída",
+              description: "Sistema instalado e verificado com sucesso",
+            });
+          } else {
+            throw new Error('Falha na verificação da instalação - tabelas não foram criadas corretamente');
+          }
+        } else {
+          throw new Error('Falha durante a execução dos scripts de instalação');
+        }
       }
 
     } catch (error: any) {
       const errorMessage = error.message || 'Erro na instalação';
-      addLog(`ERRO: ${errorMessage}`);
+      addLog(`ERRO CRÍTICO: ${errorMessage}`);
       
       toast({
         title: "Erro na instalação",
@@ -435,7 +519,7 @@ ON CONFLICT DO NOTHING;
             value={config.supabaseServiceKey || ''}
             onChange={(e) => setConfig({ ...config, supabaseServiceKey: e.target.value })}
           />
-          <p className="text-xs text-gray-500">Necessário para criar/modificar tabelas</p>
+          <p className="text-xs text-gray-500">Necessário para criar/modificar tabelas - deve começar com "eyJ"</p>
         </div>
       </TabsContent>
 
@@ -581,8 +665,8 @@ ON CONFLICT DO NOTHING;
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-medium text-blue-800 mb-2">Credenciais de acesso:</h4>
                 <p className="text-sm text-blue-700">
-                  <strong>Usuário:</strong> cesmac<br />
-                  <strong>Senha:</strong> cesmac@2025
+                  <strong>Usuário:</strong> synclead<br />
+                  <strong>Senha:</strong> s1ncl3@d
                 </p>
               </div>
 
