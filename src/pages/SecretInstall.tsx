@@ -23,7 +23,7 @@ interface DatabaseConfig {
 
 const SecretInstall = () => {
   const { toast } = useToast();
-  const [installationStep, setInstallationStep] = useState<'config' | 'verify' | 'complete'>('config');
+  const [installationStep, setInstallationStep] = useState<'config' | 'verify' | 'install' | 'complete'>('config');
   const [isLoading, setIsLoading] = useState(false);
   const [config, setConfig] = useState<DatabaseConfig>({ type: 'supabase' });
   const [existingTables, setExistingTables] = useState<string[]>([]);
@@ -62,7 +62,6 @@ const SecretInstall = () => {
     addLog('Iniciando teste de conexão...');
 
     try {
-      // Validate configuration locally first
       if (config.type === 'supabase') {
         if (!config.supabaseUrl || !config.supabaseServiceKey) {
           throw new Error('URL do Supabase e Service Key são obrigatórios');
@@ -72,43 +71,48 @@ const SecretInstall = () => {
           throw new Error('URL do Supabase deve conter "supabase.co"');
         }
 
-        // Clean URL (remove trailing slash if present)
         const cleanUrl = config.supabaseUrl.replace(/\/$/, '');
         addLog('Configuração Supabase validada localmente');
-        addLog(`Testando conexão direta com: ${cleanUrl}`);
+        addLog(`Testando conexão com: ${cleanUrl}`);
 
-        // Test direct connection to the target Supabase project
         try {
-          addLog('Testando conexão direta com o banco de dados...');
-          
-          // Try to create a Supabase client for the target project
           const { createClient } = await import('@supabase/supabase-js');
           const targetSupabase = createClient(cleanUrl, config.supabaseServiceKey);
           
-          // Test with a simple query
-          const { data, error } = await targetSupabase
-            .from('information_schema.tables')
-            .select('table_name')
-            .limit(1);
-
-          if (error) {
-            addLog(`Erro na conexão direta: ${error.message}`);
-            throw new Error(`Falha na conexão: ${error.message}`);
+          addLog('Testando conexão básica...');
+          
+          // Test basic connection with RPC call that should exist in any Supabase project
+          const { data: versionData, error: versionError } = await targetSupabase.rpc('version');
+          
+          if (versionError && !versionError.message.includes('function version() does not exist')) {
+            addLog(`Erro na conexão básica: ${versionError.message}`);
+            throw new Error(`Falha na conexão: ${versionError.message}`);
           }
 
-          addLog('Conexão direta estabelecida com sucesso!');
+          addLog('Conexão estabelecida com sucesso!');
           
-          // Check for existing tables
+          // Check for existing tables using SQL query
+          addLog('Verificando tabelas existentes...');
           const { data: tablesData, error: tablesError } = await targetSupabase
-            .from('information_schema.tables')
-            .select('table_name')
-            .eq('table_schema', 'public')
-            .in('table_name', [
-              'authorized_users', 'courses', 'postgraduate_courses', 'lead_statuses',
-              'events', 'qr_codes', 'scan_sessions', 'leads', 'message_history'
-            ]);
+            .rpc('sql', {
+              query: `
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name IN (
+                  'authorized_users', 'courses', 'postgraduate_courses', 'lead_statuses',
+                  'events', 'qr_codes', 'scan_sessions', 'leads', 'message_history'
+                )
+              `
+            });
 
-          const existingTablesList = tablesData?.map((row: any) => row.table_name) || [];
+          let existingTablesList: string[] = [];
+          
+          if (!tablesError && tablesData) {
+            existingTablesList = Array.isArray(tablesData) ? 
+              tablesData.map((row: any) => row.table_name) : [];
+          }
+          
           setExistingTables(existingTablesList);
 
           if (existingTablesList.length > 0) {
@@ -125,7 +129,7 @@ const SecretInstall = () => {
           });
 
         } catch (directError: any) {
-          addLog(`Erro na conexão direta: ${directError.message}`);
+          addLog(`Erro na conexão: ${directError.message}`);
           throw directError;
         }
       }
@@ -138,6 +142,72 @@ const SecretInstall = () => {
       
       toast({
         title: "Erro de conexão",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startInstallation = async () => {
+    setIsLoading(true);
+    setInstallationStep('install');
+    addLog('Iniciando instalação do sistema...');
+
+    try {
+      if (config.type === 'supabase') {
+        const { createClient } = await import('@supabase/supabase-js');
+        const targetSupabase = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
+        
+        // Execute database schema installation
+        addLog('Executando script de criação do banco de dados...');
+        
+        // Read and execute the database schema using the Edge Function
+        const SUPABASE_URL = "https://dobtquebpcnzjisftcfh.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0";
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/database-installer`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'apikey': SUPABASE_KEY,
+          },
+          body: JSON.stringify({
+            action: 'install',
+            config: config
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Falha na instalação');
+        }
+
+        addLog('Sistema instalado com sucesso!');
+        addLog('Todas as tabelas foram criadas');
+        addLog('Usuário padrão criado: cesmac / cesmac@2025');
+        
+        setInstallationStep('complete');
+        
+        toast({
+          title: "Instalação concluída",
+          description: "Sistema instalado com sucesso no banco de dados",
+        });
+      }
+
+    } catch (error: any) {
+      const errorMessage = error.message || 'Erro na instalação';
+      addLog(`ERRO: ${errorMessage}`);
+      
+      toast({
+        title: "Erro na instalação",
         description: errorMessage,
         variant: "destructive",
       });
@@ -211,20 +281,20 @@ const SecretInstall = () => {
         <CardContent className="space-y-6">
           {/* Progress indicator */}
           <div className="flex items-center justify-between">
-            {['config', 'verify', 'complete'].map((step, index) => (
+            {['config', 'verify', 'install', 'complete'].map((step, index) => (
               <div key={step} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                   installationStep === step ? 'bg-blue-600 text-white' :
-                  ['config', 'verify', 'complete'].indexOf(installationStep) > index ? 'bg-green-600 text-white' :
+                  ['config', 'verify', 'install', 'complete'].indexOf(installationStep) > index ? 'bg-green-600 text-white' :
                   'bg-gray-200 text-gray-600'
                 }`}>
-                  {['config', 'verify', 'complete'].indexOf(installationStep) > index ? (
+                  {['config', 'verify', 'install', 'complete'].indexOf(installationStep) > index ? (
                     <Check className="h-4 w-4" />
                   ) : (
                     index + 1
                   )}
                 </div>
-                {index < 2 && <div className="w-24 h-1 bg-gray-200 mx-2" />}
+                {index < 3 && <div className="w-16 h-1 bg-gray-200 mx-2" />}
               </div>
             ))}
           </div>
@@ -264,7 +334,7 @@ const SecretInstall = () => {
             <div className="space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800">
-                  Conexão estabelecida com sucesso! Verificação concluída.
+                  Conexão estabelecida com sucesso! Pronto para instalação.
                 </p>
               </div>
 
@@ -279,17 +349,65 @@ const SecretInstall = () => {
                     ))}
                   </div>
                   <p className="text-xs text-amber-700 mt-2">
-                    As tabelas serão sobrescritas durante a instalação
+                    As tabelas serão recriadas durante a instalação
                   </p>
                 </div>
               )}
 
               <Button 
-                onClick={() => toast({ title: "Em desenvolvimento", description: "Instalação será implementada em breve" })}
+                onClick={startInstallation}
+                disabled={isLoading}
                 className="w-full"
               >
-                <Database className="h-4 w-4 mr-2" />
-                Iniciar Instalação
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Instalando...
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-4 w-4 mr-2" />
+                    Iniciar Instalação
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {installationStep === 'install' && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  Instalação em andamento... Por favor, aguarde.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {installationStep === 'complete' && (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-medium text-green-800 mb-2">
+                  ✅ Instalação concluída com sucesso!
+                </h4>
+                <p className="text-sm text-green-700">
+                  O sistema foi instalado no banco de dados configurado.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 mb-2">Credenciais de acesso:</h4>
+                <p className="text-sm text-blue-700">
+                  <strong>Usuário:</strong> cesmac<br />
+                  <strong>Senha:</strong> cesmac@2025
+                </p>
+              </div>
+
+              <Button 
+                onClick={() => window.location.href = '/login'}
+                className="w-full"
+              >
+                Ir para Login
               </Button>
             </div>
           )}
