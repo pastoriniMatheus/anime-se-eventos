@@ -55,7 +55,7 @@ export const useAuthProvider = () => {
         return { success: false, error: 'Erro interno do sistema' };
       }
 
-      if (data && data.length > 0 && data[0].success) {
+      if (data && Array.isArray(data) && data.length > 0 && data[0].success) {
         const userData = data[0].user_data as unknown as User;
         setUser(userData);
         localStorage.setItem('cesmac_user', JSON.stringify(userData));

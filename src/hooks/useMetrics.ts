@@ -53,7 +53,7 @@ export const useConversionMetrics = () => {
         const totalScans = sessionsData.length;
         const totalLeads = leads?.length || 0;
         const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
-        const totalQRScans = qrCodes?.reduce((sum, qr) => sum + (qr.scans || 0), 0) || 0;
+        const totalQRScans = qrCodes?.length || 0; // Removido o campo 'scans' que não existe
 
         return {
           totalScans,

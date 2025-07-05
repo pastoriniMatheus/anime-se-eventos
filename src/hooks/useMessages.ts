@@ -13,7 +13,7 @@ export const useMessageTemplates = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 };
@@ -28,7 +28,7 @@ export const useMessageHistory = () => {
         .order('sent_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 };

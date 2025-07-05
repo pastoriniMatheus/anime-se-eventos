@@ -45,7 +45,7 @@ export const useWhatsAppValidation = () => {
         return true;
       }
 
-      const webhookUrl = typeof settings.value === 'string' ? settings.value : settings.value.toString();
+      const webhookUrl = settings.value;
       console.log('✅ Webhook encontrado:', webhookUrl);
 
       // Gerar ID único para a validação
