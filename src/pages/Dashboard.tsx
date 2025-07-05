@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLeads } from '@/hooks/useLeads';
@@ -48,7 +47,8 @@ const Dashboard = () => {
     conversion: true
   });
 
-  const totalScans = qrCodes.reduce((sum, qr) => sum + (qr.scans || 0), 0);
+  // Usar a métrica de scans das métricas de conversão em vez do campo inexistente
+  const totalScans = metrics?.totalScans || 0;
   const todayLeads = leads.filter(lead => {
     const today = new Date().toDateString();
     const leadDate = new Date(lead.created_at).toDateString();
