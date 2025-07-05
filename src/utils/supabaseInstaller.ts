@@ -56,7 +56,7 @@ export const testSupabaseConnection = async (
   }
 };
 
-// Schema SQL completo para instalação
+// Schema SQL corrigido para máxima compatibilidade
 const COMPLETE_SCHEMA = `
 -- Extensões necessárias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -154,15 +154,25 @@ ALTER TABLE public.qr_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scan_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
--- Políticas RLS (permitir acesso total por enquanto)
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.authorized_users FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.courses FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.postgraduate_courses FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.lead_statuses FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.events FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.qr_codes FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.scan_sessions FOR ALL USING (true);
-CREATE POLICY IF NOT EXISTS "Allow all access" ON public.leads FOR ALL USING (true);
+-- Remover políticas existentes se houver
+DROP POLICY IF EXISTS "Allow all access" ON public.authorized_users;
+DROP POLICY IF EXISTS "Allow all access" ON public.courses;
+DROP POLICY IF EXISTS "Allow all access" ON public.postgraduate_courses;
+DROP POLICY IF EXISTS "Allow all access" ON public.lead_statuses;
+DROP POLICY IF EXISTS "Allow all access" ON public.events;
+DROP POLICY IF EXISTS "Allow all access" ON public.qr_codes;
+DROP POLICY IF EXISTS "Allow all access" ON public.scan_sessions;
+DROP POLICY IF EXISTS "Allow all access" ON public.leads;
+
+-- Criar políticas RLS (permitir acesso total por enquanto)
+CREATE POLICY "Allow all access" ON public.authorized_users FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.courses FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.postgraduate_courses FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.lead_statuses FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.events FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.qr_codes FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.scan_sessions FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.leads FOR ALL USING (true);
 
 -- Dados iniciais
 INSERT INTO public.authorized_users (username, email, password_hash) 
@@ -184,69 +194,76 @@ export const installSupabaseSchema = async (
     const { createClient } = await import('@supabase/supabase-js');
     const targetSupabase = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
     
-    addLogFn('Executando instalação completa do schema...');
+    addLogFn('Executando instalação via comandos SQL individuais...');
     
-    // Tentar executar o schema completo usando REST API diretamente
-    try {
-      const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/exec`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.supabaseServiceKey}`,
-          'apikey': config.supabaseServiceKey
-        },
-        body: JSON.stringify({ query: COMPLETE_SCHEMA })
-      });
+    // Dividir o schema em comandos individuais e executar um por vez
+    const sqlCommands = COMPLETE_SCHEMA
+      .split(';')
+      .map(cmd => cmd.trim())
+      .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
 
-      if (response.ok) {
-        addLogFn('✓ Schema instalado via REST API');
-      } else {
-        throw new Error('REST API não disponível');
-      }
-    } catch (restError) {
-      addLogFn('REST API não disponível, tentando método direto...');
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (let i = 0; i < sqlCommands.length; i++) {
+      const command = sqlCommands[i].trim();
+      if (!command) continue;
       
-      // Tentar executar comandos individuais
-      const commands = COMPLETE_SCHEMA.split(';').filter(cmd => cmd.trim());
-      let successCount = 0;
-      
-      for (const command of commands) {
-        const cleanCommand = command.trim();
-        if (!cleanCommand) continue;
+      try {
+        addLogFn(`Executando comando ${i + 1}/${sqlCommands.length}...`);
         
-        try {
-          const { error } = await targetSupabase.rpc('exec', { query: cleanCommand });
+        // Usar REST API diretamente para executar SQL
+        const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/exec`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.supabaseServiceKey}`,
+            'apikey': config.supabaseServiceKey!
+          },
+          body: JSON.stringify({ sql: command + ';' })
+        });
+
+        if (response.ok || response.status === 409) { // 409 = conflict (já existe)
+          successCount++;
+        } else {
+          // Tentar método alternativo via client
+          const { error } = await targetSupabase.rpc('exec', { sql: command + ';' });
           if (!error) {
             successCount++;
+          } else {
+            errorCount++;
+            addLogFn(`Aviso: ${error.message.substring(0, 100)}`);
           }
-        } catch (cmdError) {
-          // Continuar mesmo com erros individuais
+        }
+      } catch (cmdError: any) {
+        errorCount++;
+        addLogFn(`Aviso comando ${i + 1}: ${cmdError.message?.substring(0, 50) || 'erro'}`);
+      }
+    }
+    
+    addLogFn(`Comandos executados: ${successCount} sucessos, ${errorCount} avisos`);
+    
+    if (successCount === 0) {
+      addLogFn('⚠️ Instalação automática não funcionou');
+      addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
+      addLogFn('');
+      addLogFn('-- SCHEMA COMPLETO PARA COPIAR E COLAR:');
+      
+      // Dividir o schema em linhas para o log
+      const lines = COMPLETE_SCHEMA.split('\n');
+      for (const line of lines) {
+        if (line.trim()) {
+          addLogFn(line);
         }
       }
       
-      if (successCount > 0) {
-        addLogFn(`✓ ${successCount} comandos executados com sucesso`);
-      } else {
-        addLogFn('⚠️ Instalação automática não foi possível');
-        addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
-        addLogFn('');
-        addLogFn('-- SCHEMA COMPLETO PARA COPIAR E COLAR:');
-        
-        // Dividir o schema em partes menores para o log
-        const lines = COMPLETE_SCHEMA.split('\n');
-        for (const line of lines) {
-          if (line.trim()) {
-            addLogFn(line);
-          }
-        }
-        
-        addLogFn('');
-        addLogFn('🔄 Após executar todo o SQL acima, tente a instalação novamente');
-        return false;
-      }
+      addLogFn('');
+      addLogFn('🔄 Após executar todo o SQL acima, tente a instalação novamente');
+      return false;
     }
 
     // Verificar se a instalação funcionou
+    addLogFn('Verificando instalação...');
     const { data: testUser, error: testError } = await targetSupabase
       .from('authorized_users')
       .select('username')
@@ -258,15 +275,33 @@ export const installSupabaseSchema = async (
       addLogFn('✓ Usuário padrão criado: synclead / s1ncl3@d');
       addLogFn('✅ Sistema pronto para usar!');
       return true;
-    } else {
-      addLogFn('⚠️ Instalação pode não ter sido completa');
+    } else if (successCount > 0) {
+      addLogFn('✓ Instalação parcialmente concluída');
       addLogFn('Tente fazer login com: synclead / s1ncl3@d');
-      return true; // Considerar sucesso parcial
+      return true;
+    } else {
+      addLogFn('⚠️ Não foi possível verificar a instalação');
+      return false;
     }
     
   } catch (error: any) {
     const errorMsg = error?.message || 'Erro crítico desconhecido';
     addLogFn(`ERRO CRÍTICO: ${errorMsg}`);
+    
+    // Em caso de erro, mostrar SQL para execução manual
+    addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
+    addLogFn('');
+    addLogFn('-- SCHEMA COMPLETO PARA COPIAR E COLAR:');
+    
+    const lines = COMPLETE_SCHEMA.split('\n');
+    for (const line of lines) {
+      if (line.trim()) {
+        addLogFn(line);
+      }
+    }
+    
+    addLogFn('');
+    addLogFn('🔄 Após executar todo o SQL acima, tente a instalação novamente');
     return false;
   }
 };
