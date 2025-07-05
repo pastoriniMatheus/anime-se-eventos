@@ -9,10 +9,10 @@ export const useFormSettings = () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('*')
-        .in('key', ['form_thank_you_message', 'form_thank_you_title', 'form_redirect_url']);
+        .in('key', ['form_thank_you_message', 'form_thank_you_title', 'form_redirect_url', 'form_title', 'form_subtitle', 'whatsapp_validation_enabled']);
       
       if (error) throw error;
-      return data;
+      return data || [];
     }
   });
 };
@@ -24,7 +24,7 @@ export const useUpdateFormSetting = () => {
     mutationFn: async ({ key, value }: { key: string; value: any }) => {
       console.log('Salvando configuração do formulário:', key, value);
       
-      // Primeiro verificar se existe
+      // First check if it exists
       const { data: existing } = await supabase
         .from('system_settings')
         .select('*')
@@ -34,7 +34,7 @@ export const useUpdateFormSetting = () => {
       let result;
       
       if (existing) {
-        // Atualizar
+        // Update
         result = await supabase
           .from('system_settings')
           .update({ 
@@ -45,7 +45,7 @@ export const useUpdateFormSetting = () => {
           .select()
           .single();
       } else {
-        // Inserir
+        // Insert
         result = await supabase
           .from('system_settings')
           .insert({ 

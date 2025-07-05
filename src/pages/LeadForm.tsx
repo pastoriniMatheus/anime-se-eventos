@@ -34,11 +34,21 @@ const LeadForm = () => {
   const { data: courses = [] } = useCourses();
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const { data: events = [] } = useEvents();
-  const { data: settings } = useFormSettings();
+  const { data: settingsArray = [] } = useFormSettings();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Convert settings array to object for easy access
+  const settings = React.useMemo(() => {
+    const settingsObj: Record<string, any> = {};
+    settingsArray.forEach(setting => {
+      const key = setting.key.replace('form_', ''); // Remove 'form_' prefix for easier access
+      settingsObj[key] = setting.value;
+    });
+    return settingsObj;
+  }, [settingsArray]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -116,7 +126,10 @@ const LeadForm = () => {
       return;
     }
 
-    if (settings?.whatsapp_validation_enabled && validationResult !== 'valid') {
+    // Check if WhatsApp validation is enabled
+    const whatsappValidationEnabled = settingsArray.find(s => s.key === 'whatsapp_validation_enabled')?.value === 'true';
+    
+    if (whatsappValidationEnabled && validationResult !== 'valid') {
       const isValid = await validateWhatsApp(formData.whatsapp);
       if (!isValid) return;
     }
@@ -178,7 +191,14 @@ const LeadForm = () => {
   };
 
   if (showThankYou) {
-    return <ThankYouScreen qrCodeData={qrCodeData} />;
+    return (
+      <ThankYouScreen 
+        title={settings.thank_you_title || "Obrigado!"}
+        message={settings.thank_you_message || "Seus dados foram enviados com sucesso. Entraremos em contato em breve!"}
+        redirectUrl={settings.redirect_url}
+        onBackToForm={() => setShowThankYou(false)}
+      />
+    );
   }
 
   return (
@@ -187,10 +207,10 @@ const LeadForm = () => {
         <CardHeader className="text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
           <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
             <User className="w-6 h-6" />
-            {settings?.form_title || 'Cadastro de Lead'}
+            {settings.title || 'Cadastro de Lead'}
           </CardTitle>
-          {settings?.form_subtitle && (
-            <p className="text-blue-100 mt-2">{settings.form_subtitle}</p>
+          {settings.subtitle && (
+            <p className="text-blue-100 mt-2">{settings.subtitle}</p>
           )}
         </CardHeader>
         
