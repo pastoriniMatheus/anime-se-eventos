@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useDynamicSupabase } from './useDynamicSupabase';
 
 interface User {
   id: string;
@@ -28,6 +28,7 @@ export const useAuth = () => {
 export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabase = useDynamicSupabase();
 
   useEffect(() => {
     // Verificar se há usuário logado no localStorage
@@ -41,6 +42,7 @@ export const useAuthProvider = () => {
   const login = async (username: string, password: string) => {
     try {
       console.log('Tentando fazer login:', username);
+      console.log('Cliente Supabase atual:', supabase);
       
       const { data, error } = await supabase
         .rpc('verify_login', {

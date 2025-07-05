@@ -18,15 +18,24 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { data: systemSettings = [] } = useSystemSettings();
+  const { data: systemSettings = [], isLoading: settingsLoading } = useSystemSettings();
   const isMobile = useIsMobile();
   
-  const logoSetting = systemSettings.find((s: any) => s.key === 'logo');
-  const logoUrl = logoSetting ? 
-    (typeof logoSetting.value === 'string' ? 
-      logoSetting.value : 
-      JSON.parse(String(logoSetting.value))
-    ) : '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
+  // Buscar logo das configurações do sistema
+  const logoSetting = systemSettings.find((s: any) => s.key === 'visual_logo_url' || s.key === 'logo');
+  let logoUrl = '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png'; // fallback
+  
+  if (logoSetting) {
+    try {
+      logoUrl = typeof logoSetting.value === 'string' ? 
+        logoSetting.value : 
+        JSON.parse(String(logoSetting.value));
+    } catch (e) {
+      console.error('Erro ao processar logo no header:', e);
+    }
+  }
+
+  console.log('Header - Logo URL:', logoUrl);
 
   const menuItems = [
     {
@@ -65,11 +74,20 @@ const Header = () => {
     return (
       <header className="sticky top-0 z-50 h-14 border-b bg-white shadow-sm px-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <img
-            src={logoUrl}
-            alt="CESMAC"
-            className="h-8 w-auto object-contain"
-          />
+          {settingsLoading ? (
+            <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
+          ) : (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="h-8 w-auto object-contain"
+              onError={(e) => {
+                console.error('Erro ao carregar logo no header mobile');
+                const target = e.target as HTMLImageElement;
+                target.src = '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
+              }}
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="p-2">
@@ -120,11 +138,20 @@ const Header = () => {
     <header className="sticky top-0 z-50 h-16 border-b bg-white shadow-sm px-6 flex items-center justify-between">
       <div className="flex items-center space-x-6">
         <div className="flex items-center">
-          <img
-            src={logoUrl}
-            alt="CESMAC"
-            className="h-10 w-auto object-contain"
-          />
+          {settingsLoading ? (
+            <div className="h-10 w-20 bg-gray-200 animate-pulse rounded"></div>
+          ) : (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="h-10 w-auto object-contain"
+              onError={(e) => {
+                console.error('Erro ao carregar logo no header desktop');
+                const target = e.target as HTMLImageElement;
+                target.src = '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png';
+              }}
+            />
+          )}
         </div>
         
         <nav className="flex items-center space-x-1">
