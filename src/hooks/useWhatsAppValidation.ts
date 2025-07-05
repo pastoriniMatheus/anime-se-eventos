@@ -67,7 +67,7 @@ export const useWhatsAppValidation = () => {
       console.log('🆔 ID de validação gerado:', validationId);
 
       // Verificar se já existe uma validação com este ID (improvável mas possível)
-      const { data: existingValidation } = await supabase
+      const { data: existingValidation } = await (supabase as any)
         .from('whatsapp_validations')
         .select('*')
         .eq('id', validationId)
@@ -105,7 +105,7 @@ export const useWhatsAppValidation = () => {
         while (attempts < maxAttempts) {
           console.log(`📊 Tentativa ${attempts + 1}/${maxAttempts} - Aguardando resposta...`);
           
-          const { data: validation, error: queryError } = await supabase
+          const { data: validation, error: queryError } = await (supabase as any)
             .from('whatsapp_validations')
             .select('*')
             .eq('id', validationId)
@@ -170,7 +170,7 @@ export const useWhatsAppValidation = () => {
 
         // Timeout - verificar uma última vez se houve atraso
         console.log('⏰ Timeout atingido - verificando uma última vez...');
-        const { data: finalValidation } = await supabase
+        const { data: finalValidation } = await (supabase as any)
           .from('whatsapp_validations')
           .select('*')
           .eq('id', validationId)

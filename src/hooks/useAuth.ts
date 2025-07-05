@@ -44,7 +44,8 @@ export const useAuthProvider = () => {
       console.log('Tentando fazer login:', username);
       console.log('Cliente Supabase atual:', supabase);
       
-      const { data, error } = await supabase.rpc('verify_login', {
+      // Usar tipagem any para RPC functions que não estão nos tipos
+      const { data, error } = await (supabase as any).rpc('verify_login', {
         p_username: username,
         p_password: password
       });

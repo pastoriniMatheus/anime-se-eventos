@@ -7,7 +7,8 @@ export const useScanSessions = () => {
     queryKey: ['scan_sessions'],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.rpc('get_scan_sessions');
+        // Usar tipagem any para RPC functions não tipadas
+        const { data, error } = await (supabase as any).rpc('get_scan_sessions');
         
         if (error) {
           console.error('Error fetching scan sessions:', error);
@@ -43,7 +44,7 @@ export const useConversionMetrics = () => {
         if (qrError) throw qrError;
 
         // Buscar sessões de scan usando a função RPC
-        const { data: sessions, error: sessionsError } = await supabase.rpc('get_scan_sessions');
+        const { data: sessions, error: sessionsError } = await (supabase as any).rpc('get_scan_sessions');
         
         if (sessionsError) {
           console.error('Error fetching scan sessions:', sessionsError);
@@ -53,7 +54,9 @@ export const useConversionMetrics = () => {
         const totalScans = sessionsData.length;
         const totalLeads = leads?.length || 0;
         const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
-        const totalQRScans = qrCodes?.reduce((sum, qr) => sum + (qr.scans || 0), 0) || 0;
+        
+        // Ajustar para usar a estrutura correta do QR code (sem campo scans separado)
+        const totalQRScans = qrCodes?.length || 0;
 
         return {
           totalScans,

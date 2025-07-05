@@ -7,7 +7,8 @@ export const useMessageTemplates = () => {
   return useQuery({
     queryKey: ['message_templates'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Usar tipagem any para acessar tabelas não tipadas
+      const { data, error } = await (supabase as any)
         .from('message_templates')
         .select('*')
         .order('created_at', { ascending: false });
@@ -22,7 +23,8 @@ export const useMessageHistory = () => {
   return useQuery({
     queryKey: ['message_history'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Usar tipagem any para acessar tabelas não tipadas
+      const { data, error } = await (supabase as any)
         .from('message_history')
         .select('*')
         .order('sent_at', { ascending: false });
@@ -39,7 +41,8 @@ export const useCreateMessageTemplate = () => {
 
   return useMutation({
     mutationFn: async ({ name, content, type }: { name: string; content: string; type: string }) => {
-      const { data, error } = await supabase
+      // Usar tipagem any para acessar tabelas não tipadas
+      const { data, error } = await (supabase as any)
         .from('message_templates')
         .insert([{ name, content, type }])
         .select()
