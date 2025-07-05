@@ -1,6 +1,6 @@
 
 -- Schema consolidado do sistema de leads
--- Gerado automaticamente a partir das migrações
+-- Gerado automaticamente - inclui todas as tabelas necessárias
 
 -- Extensões necessárias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -113,6 +113,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   key TEXT UNIQUE NOT NULL,
   value TEXT,
+  description TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -127,6 +128,7 @@ CREATE INDEX IF NOT EXISTS idx_scan_sessions_scanned_at ON public.scan_sessions(
 CREATE INDEX IF NOT EXISTS idx_leads_scan_session_id ON public.leads(scan_session_id);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_validations_status ON public.whatsapp_validations(status);
 CREATE INDEX IF NOT EXISTS idx_whatsapp_validations_created_at ON public.whatsapp_validations(created_at);
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON public.system_settings(key);
 
 -- Habilitar RLS
 ALTER TABLE public.authorized_users ENABLE ROW LEVEL SECURITY;
@@ -165,7 +167,7 @@ DECLARE
 BEGIN
   SELECT * INTO user_record 
   FROM public.authorized_users 
-  WHERE username = p_username 
+  WHERE (username = p_username OR email = p_username)
   AND password_hash = crypt(p_password, password_hash);
   
   IF FOUND THEN
@@ -219,14 +221,23 @@ $$ LANGUAGE plpgsql;
 
 -- Dados iniciais
 INSERT INTO public.authorized_users (username, email, password_hash) 
-VALUES ('cesmac', 'cesmac@sistema.com', crypt('cesmac@2025', gen_salt('bf')))
+VALUES ('synclead', 'synclead@sistema.com', crypt('s1ncl3@d', gen_salt('bf')))
 ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO public.lead_statuses (name, color)
 VALUES ('Pendente', '#f59e0b')
 ON CONFLICT DO NOTHING;
 
--- Adicionar vincular leads a scan_sessions
+-- Configurações padrão do sistema
+INSERT INTO public.system_settings (key, value, description) VALUES
+('visual_logo_url', '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png', 'URL do logotipo do sistema'),
+('visual_title', 'Sistema de Captura de Leads', 'Título principal do sistema'),
+('visual_subtitle', 'Gestão Inteligente de Leads', 'Subtítulo do sistema'),
+('webhook_urls', '{"whatsapp":"https://n8n.intrategica.com.br/webhook-test/disparos","email":"https://n8n.intrategica.com.br/webhook-test/disparos","sms":"https://n8n.intrategica.com.br/webhook-test/disparos","whatsappValidation":"https://n8n-wh.intrategica.com.br/webhook/qrcode-cesmac","sync":""}', 'URLs dos webhooks configurados'),
+('sync_webhook_settings', '{"interval":"60","mode":"new_only","enabled":false}', 'Configurações do webhook de sincronização')
+ON CONFLICT (key) DO NOTHING;
+
+-- Vincular leads a scan_sessions
 DO $$
 BEGIN
   IF NOT EXISTS (
