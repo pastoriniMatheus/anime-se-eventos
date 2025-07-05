@@ -30,7 +30,7 @@ const SecretInstall = () => {
   const [existingTables, setExistingTables] = useState<string[]>([]);
   const [installationLog, setInstallationLog] = useState<string[]>([]);
 
-  // Verificar parâmetro de segurança na URL
+  // Check security parameter in URL
   const urlParams = new URLSearchParams(window.location.search);
   const authKey = urlParams.get('key');
   
@@ -63,7 +63,7 @@ const SecretInstall = () => {
     addLog('Iniciando teste de conexão...');
 
     try {
-      // Validar configuração antes de enviar
+      // Validate configuration locally first
       if (config.type === 'supabase') {
         if (!config.supabaseUrl || !config.supabaseServiceKey) {
           throw new Error('URL do Supabase e Service Key são obrigatórios');
@@ -73,24 +73,43 @@ const SecretInstall = () => {
           throw new Error('URL do Supabase deve conter "supabase.co"');
         }
 
+        // Clean URL (remove trailing slash if present)
+        const cleanUrl = config.supabaseUrl.replace(/\/$/, '');
+        const updatedConfig = { ...config, supabaseUrl: cleanUrl };
+        
         addLog('Configuração Supabase validada localmente');
+        addLog(`Conectando a: ${cleanUrl}`);
       }
 
       addLog('Enviando requisição para Edge Function...');
 
-      const { data, error } = await supabase.functions.invoke('database-installer', {
-        body: {
+      // Make the request with better error handling
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/database-installer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': supabase.supabaseKey,
+        },
+        body: JSON.stringify({
           action: 'test_connection',
           config: config
-        }
+        })
       });
 
-      addLog('Resposta recebida da Edge Function');
+      addLog(`Status da resposta: ${response.status}`);
 
-      if (error) {
-        addLog(`Erro da Edge Function: ${error.message}`);
-        throw new Error(`Erro na Edge Function: ${error.message}`);
+      if (!response.ok) {
+        addLog(`Erro HTTP: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        addLog(`Resposta de erro: ${errorText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      addLog('Dados recebidos da Edge Function');
+      
+      console.log('Response data:', data);
 
       if (!data.success) {
         addLog(`Erro nos dados: ${data.error || 'Erro desconhecido'}`);
@@ -277,7 +296,7 @@ const SecretInstall = () => {
             </div>
           )}
 
-          {/* Log de instalação */}
+          {/* Installation log */}
           {installationLog.length > 0 && (
             <div className="bg-gray-50 border rounded-lg p-4 max-h-64 overflow-y-auto">
               <h4 className="font-medium mb-2">Log de Instalação:</h4>

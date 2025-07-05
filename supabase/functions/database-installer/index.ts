@@ -44,37 +44,70 @@ const checkExistingTables = async (supabaseClient: any) => {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const { action, config } = body;
+    console.log('Database installer function called');
+    
+    // Parse request body
+    let body;
+    try {
+      const text = await req.text();
+      console.log('Raw request body:', text);
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.log('Error parsing request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid JSON in request body',
+          details: parseError.toString()
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      );
+    }
 
-    console.log('Received request:', { action, configType: config?.type });
+    const { action, config } = body;
+    console.log('Parsed request:', { action, configType: config?.type });
+
+    // Validate action
+    if (!action) {
+      throw new Error('Action is required');
+    }
 
     if (action === 'test_connection') {
+      console.log('Processing test_connection action');
+      
       if (!config || !config.type) {
-        throw new Error('Configuração inválida');
+        throw new Error('Configuration is required');
       }
 
       if (config.type === 'supabase') {
+        console.log('Testing Supabase connection');
+        
         if (!config.supabaseUrl || !config.supabaseServiceKey) {
-          throw new Error('URL do Supabase e Service Key são obrigatórios');
+          throw new Error('Supabase URL and Service Key are required');
         }
 
-        // Validar formato da URL
+        // Validate URL format
         if (!config.supabaseUrl.includes('supabase.co')) {
-          throw new Error('URL do Supabase inválida');
+          throw new Error('Invalid Supabase URL format');
         }
 
+        console.log('Creating Supabase client');
         const supabaseClient = createClient(
           config.supabaseUrl,
           config.supabaseServiceKey
         );
 
-        // Testar conexão simples
+        console.log('Testing database connection');
+        // Test connection with a simple query
         const { data: testData, error: testError } = await supabaseClient
           .from('information_schema.tables')
           .select('table_name')
@@ -82,50 +115,57 @@ serve(async (req) => {
 
         if (testError) {
           console.log('Supabase connection error:', testError);
-          throw new Error(`Erro na conexão Supabase: ${testError.message}`);
+          throw new Error(`Connection failed: ${testError.message}`);
         }
 
-        // Verificar tabelas existentes
+        console.log('Connection successful, checking existing tables');
+        // Check for existing tables
         const existingTables = await checkExistingTables(supabaseClient);
+        console.log('Found existing tables:', existingTables);
 
         return new Response(
           JSON.stringify({ 
             success: true, 
             existingTables,
-            message: 'Conexão Supabase estabelecida com sucesso'
+            message: 'Supabase connection established successfully'
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
-        throw new Error('Apenas Supabase é suportado nesta versão');
+        throw new Error('Only Supabase is supported in this version');
       }
     }
 
     if (action === 'install') {
-      // Implementação da instalação será adicionada posteriormente
+      console.log('Processing install action');
       return new Response(
         JSON.stringify({ 
           success: false, 
-          message: 'Funcionalidade de instalação em desenvolvimento'
+          message: 'Installation functionality is under development'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    throw new Error('Ação não reconhecida');
+    throw new Error(`Unknown action: ${action}`);
 
   } catch (error: any) {
-    console.error('Error in database-installer:', error);
+    console.error('Error in database-installer function:', error);
+    
+    const errorMessage = error.message || 'Internal server error';
+    const errorDetails = error.toString();
+    
+    console.log('Returning error response:', { errorMessage, errorDetails });
     
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || 'Erro interno do servidor',
-        details: error.toString()
+        error: errorMessage,
+        details: errorDetails
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 // Mudando para 200 para evitar problemas de CORS
+        status: 200
       }
     );
   }
