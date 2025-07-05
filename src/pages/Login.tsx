@@ -26,8 +26,10 @@ const Login = () => {
     console.log('Configurações do sistema carregadas:', systemSettings);
   }, [systemSettings]);
 
-  // Buscar logo das configurações do sistema
-  const logoSetting = systemSettings.find((s: any) => s.key === 'visual_logo_url' || s.key === 'logo');
+  // Buscar logo das configurações do sistema - fix the array check
+  const logoSetting = Array.isArray(systemSettings) 
+    ? systemSettings.find((s: any) => s.key === 'visual_logo_url' || s.key === 'logo')
+    : null;
   let logoUrl = '/lovable-uploads/c7eb5d40-5d53-4b46-b5a9-d35d5a784ac7.png'; // fallback
   
   if (logoSetting) {
