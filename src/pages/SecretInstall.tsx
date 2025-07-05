@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,66 +74,61 @@ const SecretInstall = () => {
 
         // Clean URL (remove trailing slash if present)
         const cleanUrl = config.supabaseUrl.replace(/\/$/, '');
-        const updatedConfig = { ...config, supabaseUrl: cleanUrl };
-        
         addLog('Configuração Supabase validada localmente');
-        addLog(`Conectando a: ${cleanUrl}`);
+        addLog(`Testando conexão direta com: ${cleanUrl}`);
+
+        // Test direct connection to the target Supabase project
+        try {
+          addLog('Testando conexão direta com o banco de dados...');
+          
+          // Try to create a Supabase client for the target project
+          const { createClient } = await import('@supabase/supabase-js');
+          const targetSupabase = createClient(cleanUrl, config.supabaseServiceKey);
+          
+          // Test with a simple query
+          const { data, error } = await targetSupabase
+            .from('information_schema.tables')
+            .select('table_name')
+            .limit(1);
+
+          if (error) {
+            addLog(`Erro na conexão direta: ${error.message}`);
+            throw new Error(`Falha na conexão: ${error.message}`);
+          }
+
+          addLog('Conexão direta estabelecida com sucesso!');
+          
+          // Check for existing tables
+          const { data: tablesData, error: tablesError } = await targetSupabase
+            .from('information_schema.tables')
+            .select('table_name')
+            .eq('table_schema', 'public')
+            .in('table_name', [
+              'authorized_users', 'courses', 'postgraduate_courses', 'lead_statuses',
+              'events', 'qr_codes', 'scan_sessions', 'leads', 'message_history'
+            ]);
+
+          const existingTablesList = tablesData?.map((row: any) => row.table_name) || [];
+          setExistingTables(existingTablesList);
+
+          if (existingTablesList.length > 0) {
+            addLog(`Encontradas ${existingTablesList.length} tabelas existentes: ${existingTablesList.join(', ')}`);
+          } else {
+            addLog('Nenhuma tabela existente encontrada - instalação limpa');
+          }
+
+          setInstallationStep('verify');
+          
+          toast({
+            title: "Conexão bem-sucedida",
+            description: "Banco de dados acessível e validado",
+          });
+
+        } catch (directError: any) {
+          addLog(`Erro na conexão direta: ${directError.message}`);
+          throw directError;
+        }
       }
-
-      addLog('Enviando requisição para Edge Function...');
-
-      // Use hardcoded Supabase values from client config
-      const SUPABASE_URL = "https://dobtquebpcnzjisftcfh.supabase.co";
-      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0";
-
-      // Make the request with better error handling
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/database-installer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'apikey': SUPABASE_KEY,
-        },
-        body: JSON.stringify({
-          action: 'test_connection',
-          config: config
-        })
-      });
-
-      addLog(`Status da resposta: ${response.status}`);
-
-      if (!response.ok) {
-        addLog(`Erro HTTP: ${response.status} ${response.statusText}`);
-        const errorText = await response.text();
-        addLog(`Resposta de erro: ${errorText}`);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      addLog('Dados recebidos da Edge Function');
-      
-      console.log('Response data:', data);
-
-      if (!data.success) {
-        addLog(`Erro nos dados: ${data.error || 'Erro desconhecido'}`);
-        throw new Error(data.error || 'Falha na conexão');
-      }
-      
-      addLog('Conexão estabelecida com sucesso!');
-      setExistingTables(data.existingTables || []);
-      
-      if (data.existingTables && data.existingTables.length > 0) {
-        addLog(`Encontradas ${data.existingTables.length} tabelas existentes`);
-      } else {
-        addLog('Nenhuma tabela existente encontrada - instalação limpa');
-      }
-
-      setInstallationStep('verify');
-      
-      toast({
-        title: "Conexão bem-sucedida",
-        description: data.message || "Banco de dados acessível",
-      });
 
     } catch (error: any) {
       const errorMessage = error.message || 'Erro desconhecido';
