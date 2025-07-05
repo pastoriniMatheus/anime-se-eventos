@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from 'lucide-react';
@@ -9,6 +9,7 @@ import InstallationSteps from '@/components/SecretInstall/InstallationSteps';
 import InstallationLog from '@/components/SecretInstall/InstallationLog';
 import { DatabaseConfig, InstallationStep } from '@/types/database';
 import { addLog, testSupabaseConnection, installSupabaseSchema } from '@/utils/supabaseInstaller';
+import { saveSupabaseConfig, loadSupabaseConfig, updateSupabaseClient } from '@/utils/supabaseClientUpdater';
 
 const SecretInstall = () => {
   const { toast } = useToast();
@@ -20,6 +21,15 @@ const SecretInstall = () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const authKey = urlParams.get('key');
+
+  // Carregar configurações salvas ao inicializar
+  useEffect(() => {
+    const savedConfig = loadSupabaseConfig();
+    if (savedConfig) {
+      setConfig(savedConfig);
+      addLogEntry('Configurações anteriores carregadas');
+    }
+  }, []);
 
   const addLogEntry = (message: string) => {
     addLog(message, setInstallationLog);
@@ -67,32 +77,40 @@ const SecretInstall = () => {
     setIsLoading(true);
     setInstallationStep('install');
 
+    // SALVAR CONFIGURAÇÕES IMEDIATAMENTE
+    addLogEntry('Salvando configurações do banco...');
+    saveSupabaseConfig(config);
+    updateSupabaseClient(config);
+    addLogEntry('✓ Configurações salvas - sistema conectado ao novo banco');
+
     try {
       if (config.type === 'supabase') {
         const success = await installSupabaseSchema(config, addLogEntry);
         
         if (success) {
           setInstallationStep('complete');
+          addLogEntry('✅ Sistema configurado e pronto para uso!');
           toast({
             title: "Instalação concluída",
-            description: "Sistema instalado com sucesso",
+            description: "Sistema instalado e configurado com sucesso",
           });
         } else {
+          addLogEntry('⚠️ Instalação não concluída automaticamente');
+          addLogEntry('🔧 Configurações salvas - você pode executar o SQL manualmente');
           toast({
-            title: "Erro na instalação",
-            description: "Falha durante a instalação - verifique o log",
-            variant: "destructive",
+            title: "Configuração salva",
+            description: "Execute o SQL manualmente e as configurações já estão aplicadas",
           });
         }
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Erro na instalação';
-      addLogEntry(`ERRO CRÍTICO: ${errorMessage}`);
+      addLogEntry(`ERRO: ${errorMessage}`);
+      addLogEntry('🔧 Configurações foram salvas - execute o SQL manualmente');
       
       toast({
-        title: "Erro na instalação",
-        description: errorMessage,
-        variant: "destructive",
+        title: "Configuração salva",
+        description: "Execute o SQL manualmente - as configurações já estão aplicadas",
       });
     } finally {
       setIsLoading(false);

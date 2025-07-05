@@ -1,4 +1,3 @@
-
 import { DatabaseConfig } from '@/types/database';
 
 export const addLog = (
@@ -194,9 +193,24 @@ export const installSupabaseSchema = async (
     const { createClient } = await import('@supabase/supabase-js');
     const targetSupabase = createClient(config.supabaseUrl!, config.supabaseServiceKey!);
     
-    addLogFn('Executando instalação via comandos SQL individuais...');
+    // Primeiro, verificar se já está instalado
+    addLogFn('Verificando estado atual do banco...');
+    const { data: existingUser } = await targetSupabase
+      .from('authorized_users')
+      .select('username')
+      .eq('username', 'synclead')
+      .limit(1);
+
+    if (existingUser && existingUser.length > 0) {
+      addLogFn('✓ Sistema já está instalado!');
+      addLogFn('✓ Usuário padrão encontrado: synclead');
+      addLogFn('✅ Instalação verificada com sucesso!');
+      return true;
+    }
+
+    addLogFn('Executando comandos SQL individuais...');
     
-    // Dividir o schema em comandos individuais e executar um por vez
+    // Dividir o schema em comandos individuais
     const sqlCommands = COMPLETE_SCHEMA
       .split(';')
       .map(cmd => cmd.trim())
@@ -210,77 +224,62 @@ export const installSupabaseSchema = async (
       if (!command) continue;
       
       try {
-        addLogFn(`Executando comando ${i + 1}/${sqlCommands.length}...`);
+        addLogFn(`Comando ${i + 1}/${sqlCommands.length}: ${command.substring(0, 50)}...`);
         
-        // Usar REST API diretamente para executar SQL
-        const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/exec`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.supabaseServiceKey}`,
-            'apikey': config.supabaseServiceKey!
-          },
-          body: JSON.stringify({ sql: command + ';' })
+        // Tentar executar via RPC
+        const { error } = await targetSupabase.rpc('sql', { 
+          query: command + ';' 
         });
 
-        if (response.ok || response.status === 409) { // 409 = conflict (já existe)
+        if (!error) {
           successCount++;
+          addLogFn(`✓ Sucesso`);
         } else {
-          // Tentar método alternativo via client
-          const { error } = await targetSupabase.rpc('exec', { sql: command + ';' });
-          if (!error) {
-            successCount++;
-          } else {
-            errorCount++;
-            addLogFn(`Aviso: ${error.message.substring(0, 100)}`);
-          }
+          errorCount++;
+          addLogFn(`⚠ Aviso: ${error.message.substring(0, 80)}`);
         }
       } catch (cmdError: any) {
         errorCount++;
-        addLogFn(`Aviso comando ${i + 1}: ${cmdError.message?.substring(0, 50) || 'erro'}`);
+        addLogFn(`⚠ Erro: ${cmdError.message?.substring(0, 80) || 'erro desconhecido'}`);
       }
     }
     
-    addLogFn(`Comandos executados: ${successCount} sucessos, ${errorCount} avisos`);
+    addLogFn(`Resultado: ${successCount} sucessos, ${errorCount} avisos`);
     
-    if (successCount === 0) {
-      addLogFn('⚠️ Instalação automática não funcionou');
+    // Verificar instalação final
+    addLogFn('Verificando instalação final...');
+    const { data: finalCheck } = await targetSupabase
+      .from('authorized_users')
+      .select('username')
+      .eq('username', 'synclead')
+      .limit(1);
+
+    if (finalCheck && finalCheck.length > 0) {
+      addLogFn('✅ Instalação automática concluída!');
+      addLogFn('✓ Usuário padrão criado: synclead / s1ncl3@d');
+      return true;
+    } else if (successCount > 0) {
+      addLogFn('⚠️ Instalação parcial - algumas operações podem ter falhado');
       addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
-      addLogFn('');
-      addLogFn('-- SCHEMA COMPLETO PARA COPIAR E COLAR:');
       
-      // Dividir o schema em linhas para o log
+      // Mostrar SQL para execução manual
       const lines = COMPLETE_SCHEMA.split('\n');
       for (const line of lines) {
         if (line.trim()) {
           addLogFn(line);
         }
       }
-      
-      addLogFn('');
-      addLogFn('🔄 Após executar todo o SQL acima, tente a instalação novamente');
       return false;
-    }
-
-    // Verificar se a instalação funcionou
-    addLogFn('Verificando instalação...');
-    const { data: testUser, error: testError } = await targetSupabase
-      .from('authorized_users')
-      .select('username')
-      .eq('username', 'synclead')
-      .limit(1);
-
-    if (!testError && testUser && testUser.length > 0) {
-      addLogFn('✓ Instalação verificada com sucesso!');
-      addLogFn('✓ Usuário padrão criado: synclead / s1ncl3@d');
-      addLogFn('✅ Sistema pronto para usar!');
-      return true;
-    } else if (successCount > 0) {
-      addLogFn('✓ Instalação parcialmente concluída');
-      addLogFn('Tente fazer login com: synclead / s1ncl3@d');
-      return true;
     } else {
-      addLogFn('⚠️ Não foi possível verificar a instalação');
+      addLogFn('⚠️ Instalação automática falhou');
+      addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
+      
+      const lines = COMPLETE_SCHEMA.split('\n');
+      for (const line of lines) {
+        if (line.trim()) {
+          addLogFn(line);
+        }
+      }
       return false;
     }
     
@@ -288,20 +287,13 @@ export const installSupabaseSchema = async (
     const errorMsg = error?.message || 'Erro crítico desconhecido';
     addLogFn(`ERRO CRÍTICO: ${errorMsg}`);
     
-    // Em caso de erro, mostrar SQL para execução manual
     addLogFn('📋 Execute o SQL completo manualmente no Supabase:');
-    addLogFn('');
-    addLogFn('-- SCHEMA COMPLETO PARA COPIAR E COLAR:');
-    
     const lines = COMPLETE_SCHEMA.split('\n');
     for (const line of lines) {
       if (line.trim()) {
         addLogFn(line);
       }
     }
-    
-    addLogFn('');
-    addLogFn('🔄 Após executar todo o SQL acima, tente a instalação novamente');
     return false;
   }
 };
