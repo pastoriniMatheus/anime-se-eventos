@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import LeadForm from "./pages/LeadForm";
 import Login from "./pages/Login";
 import Apresentacao from "./pages/Apresentacao";
 import NotFound from "./pages/NotFound";
+import SecretInstall from "./pages/SecretInstall";
 import { useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
@@ -44,6 +44,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/apresentacao" element={<Apresentacao />} />
       <Route path="/form" element={<LeadForm />} />
+      <Route path="/secret-install" element={<SecretInstall />} />
       <Route path="/" element={
         <ProtectedRoute>
           <Layout />
