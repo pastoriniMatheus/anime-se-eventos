@@ -50,7 +50,6 @@ export const useAuthProvider = () => {
       console.log('=== INÍCIO DO LOGIN ===');
       console.log('Username tentando logar:', username);
       console.log('Cliente Supabase atual:', supabase);
-      console.log('URL do Supabase:', supabase.supabaseUrl);
       
       // Teste de conectividade básica
       const { data: testData, error: testError } = await supabase
