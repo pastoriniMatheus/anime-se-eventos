@@ -265,6 +265,7 @@ export type Database = {
           full_url: string
           id: string
           original_url: string | null
+          scans: number
           short_url: string
           tracking_id: string | null
           type: string | null
@@ -275,6 +276,7 @@ export type Database = {
           full_url: string
           id?: string
           original_url?: string | null
+          scans?: number
           short_url: string
           tracking_id?: string | null
           type?: string | null
@@ -285,6 +287,7 @@ export type Database = {
           full_url?: string
           id?: string
           original_url?: string | null
+          scans?: number
           short_url?: string
           tracking_id?: string | null
           type?: string | null
