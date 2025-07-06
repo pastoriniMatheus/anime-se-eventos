@@ -107,14 +107,15 @@ const QRCodePage = () => {
         trackingId
       });
 
-      // Criar o QR code - CORRIGIDO para incluir full_url
+      // Criar o QR code - incluindo contador de scans inicializado em 0
       const qrCodeData: any = {
         event_id: event.id,
         short_url: shortUrl,
         full_url: waLink,        // Adicionar full_url (campo obrigatório)
         original_url: waLink,    // A URL final (WhatsApp ou formulário)
         tracking_id: trackingId,
-        type: newQRCode.type
+        type: newQRCode.type,
+        scans: 0                 // Inicializar contador de scans
       };
 
       const { error: qrError } = await supabase
@@ -125,6 +126,8 @@ const QRCodePage = () => {
 
       queryClient.invalidateQueries({ queryKey: ['qr_codes'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['conversion_metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['scan_sessions'] });
       
       setNewQRCode({ eventName: '', whatsappNumber: '', type: 'whatsapp' });
       setIsCreateDialogOpen(false);
@@ -427,6 +430,8 @@ const QRCodePage = () => {
               {qrCodes.map((qrCode: any) => {
                 const displayUrl = getQRCodeDisplayUrl(qrCode);
                 const qrType = qrCode.type || 'whatsapp';
+                const scanCount = qrCode.scans || 0;
+                
                 return (
                   <TableRow key={qrCode.id}>
                     <TableCell>
@@ -486,7 +491,9 @@ const QRCodePage = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{qrCode.scans || 0}</Badge>
+                      <Badge variant={scanCount > 0 ? "default" : "secondary"}>
+                        {scanCount}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {new Date(qrCode.created_at).toLocaleDateString('pt-BR')}

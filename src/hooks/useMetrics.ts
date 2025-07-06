@@ -7,7 +7,7 @@ export const useScanSessions = () => {
     queryKey: ['scan_sessions'],
     queryFn: async () => {
       try {
-        // Usar tipagem any para RPC functions não tipadas
+        // Usar a função RPC para buscar sessões com dados relacionados
         const { data, error } = await (supabase as any).rpc('get_scan_sessions');
         
         if (error) {
@@ -15,6 +15,7 @@ export const useScanSessions = () => {
           return [];
         }
         
+        console.log('Sessões de scan encontradas:', data?.length || 0);
         return data || [];
       } catch (error) {
         console.error('Error fetching scan sessions:', error);
@@ -43,18 +44,34 @@ export const useConversionMetrics = () => {
         
         if (sessionsError) throw sessionsError;
 
-        // Buscar dados de QR codes
+        // Buscar dados de QR codes com contadores de scan
         const { data: qrCodes, error: qrError } = await supabase
           .from('qr_codes')
-          .select('*');
+          .select('id, scans, type');
         
         if (qrError) throw qrError;
 
         const sessionsData = sessions || [];
-        const totalScans = sessionsData.length;
+        const qrCodesData = qrCodes || [];
+        
+        // Calcular total de scans a partir dos QR codes
+        const totalScansFromQR = qrCodesData.reduce((sum, qr) => sum + (qr.scans || 0), 0);
+        
+        // Usar o maior valor entre sessões registradas e contador dos QR codes
+        const totalScans = Math.max(sessionsData.length, totalScansFromQR);
+        
         const totalLeads = leads?.length || 0;
         const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
-        const totalQRCodes = qrCodes?.length || 0;
+        const totalQRCodes = qrCodesData.length;
+
+        console.log('Métricas calculadas:', {
+          totalScans,
+          totalScansFromQR,
+          sessionsCount: sessionsData.length,
+          totalLeads,
+          totalQRCodes,
+          convertedSessions
+        });
 
         return {
           totalScans,

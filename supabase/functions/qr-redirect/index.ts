@@ -74,15 +74,19 @@ serve(async (req) => {
 
     // Registrar scan session
     const userAgent = req.headers.get('user-agent') || '';
-    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
+    const ipAddress = req.headers.get('x-forwarded-for') || 
+                     req.headers.get('x-real-ip') || 
+                     req.headers.get('cf-connecting-ip') || '';
 
+    console.log('Registrando scan session para QR code:', qrCode.id);
     const { data: scanSession, error: sessionError } = await supabase
       .from('scan_sessions')
       .insert({
         qr_code_id: qrCode.id,
         event_id: qrCode.event_id,
         user_agent: userAgent,
-        ip_address: ipAddress
+        ip_address: ipAddress,
+        scanned_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -90,16 +94,40 @@ serve(async (req) => {
     if (sessionError) {
       console.error('Erro ao registrar scan session:', sessionError);
     } else {
-      console.log('Scan session registrada:', scanSession);
+      console.log('Scan session registrada com sucesso:', scanSession);
     }
 
-    // Redirecionar para a URL original
-    console.log('Redirecionando para:', qrCode.original_url);
+    // Incrementar contador de scans no QR code
+    const { error: updateError } = await supabase
+      .from('qr_codes')
+      .update({ 
+        scans: (qrCode.scans || 0) + 1 
+      })
+      .eq('id', qrCode.id);
+
+    if (updateError) {
+      console.error('Erro ao atualizar contador de scans:', updateError);
+    } else {
+      console.log('Contador de scans atualizado');
+    }
+
+    // Determinar URL de redirecionamento
+    let redirectUrl = qrCode.original_url;
+    
+    if (!redirectUrl) {
+      console.error('URL de redirecionamento não encontrada no QR code');
+      return new Response('URL de redirecionamento não configurada', { 
+        status: 500,
+        headers: corsHeaders 
+      });
+    }
+
+    console.log('Redirecionando para:', redirectUrl);
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': qrCode.original_url
+        'Location': redirectUrl
       }
     });
 
