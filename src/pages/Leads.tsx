@@ -12,6 +12,7 @@ import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useLeads, useLeadStatuses } from '@/hooks/useLeads';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
+import { useNomenclature } from '@/hooks/useNomenclature';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';
@@ -27,6 +28,7 @@ const Leads = () => {
   const { data: events = [] } = useEvents();
   const { data: leadStatuses = [] } = useLeadStatuses();
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -274,20 +276,20 @@ const Leads = () => {
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="course">Curso de Graduação</SelectItem>
-                      <SelectItem value="postgraduate">Pós-graduação</SelectItem>
+                      <SelectItem value="course">{courseNomenclature}</SelectItem>
+                      <SelectItem value="postgraduate">{postgraduateNomenclature}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {newLead.course_type === 'course' && (
                   <div className="grid gap-2">
-                    <Label htmlFor="course">Curso</Label>
+                    <Label htmlFor="course">{courseNomenclature.slice(0, -1)}</Label>
                     <Select 
                       value={newLead.course_id} 
                       onValueChange={(value) => setNewLead({...newLead, course_id: value})}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione um curso" />
+                        <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
                       </SelectTrigger>
                       <SelectContent>
                         {courses.map((course: any) => (
@@ -299,13 +301,13 @@ const Leads = () => {
                 )}
                 {newLead.course_type === 'postgraduate' && (
                   <div className="grid gap-2">
-                    <Label htmlFor="postgraduate">Pós-graduação</Label>
+                    <Label htmlFor="postgraduate">{postgraduateNomenclature}</Label>
                     <Select 
                       value={newLead.postgraduate_course_id} 
                       onValueChange={(value) => setNewLead({...newLead, postgraduate_course_id: value})}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma pós-graduação" />
+                        <SelectValue placeholder={`Selecione uma ${postgraduateNomenclature.toLowerCase()}`} />
                       </SelectTrigger>
                       <SelectContent>
                         {postgraduateCourses.map((course: any) => (
@@ -381,13 +383,13 @@ const Leads = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Curso</Label>
+              <Label>{courseNomenclature.slice(0, -1)}</Label>
               <Select value={filterCourse} onValueChange={setFilterCourse}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os cursos</SelectItem>
+                  <SelectItem value="all">Todos os {courseNomenclature.toLowerCase()}</SelectItem>
                   {courses.map((course: any) => (
                     <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                   ))}
@@ -435,7 +437,7 @@ const Leads = () => {
                 <TableHead>ID do Lead</TableHead>
                 <TableHead>WhatsApp</TableHead>
                 <TableHead>E-mail</TableHead>
-                <TableHead>Curso</TableHead>
+                <TableHead>{courseNomenclature.slice(0, -1)}</TableHead>
                 <TableHead>Evento</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Turno</TableHead>

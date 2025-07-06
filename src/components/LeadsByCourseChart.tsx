@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
+import { useNomenclature } from '@/hooks/useNomenclature';
 import { BarChart3, PieChart as PieChartIcon, Filter } from 'lucide-react';
 
 interface LeadsByCourseChartProps {
@@ -25,6 +26,7 @@ interface LeadsByCourseChartProps {
 
 const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
   const [viewType, setViewType] = useState<'pie' | 'bar'>('pie');
   const [courseFilter, setCourseFilter] = useState<'all' | 'graduation' | 'postgraduate'>('all');
   const [maxCourses, setMaxCourses] = useState(8);
@@ -49,7 +51,7 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
       const courseLeads = leads.filter(lead => lead.course_id === course.id);
       return {
         name: course.name,
-        fullName: `${course.name} (Graduação)`,
+        fullName: `${course.name} (${courseNomenclature.slice(0, -1)})`,
         value: courseLeads.length,
         color: colors[index % colors.length],
         type: 'graduation'
@@ -61,7 +63,7 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
       const courseLeads = leads.filter(lead => lead.postgraduate_course_id === course.id);
       return {
         name: course.name,
-        fullName: `${course.name} (Pós)`,
+        fullName: `${course.name} (${postgraduateNomenclature})`,
         value: courseLeads.length,
         color: colors[(courses.length + index) % colors.length],
         type: 'postgraduate'
@@ -89,7 +91,7 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
       if (otherTotal > 0) {
         topCourses.push({
           name: 'Outros',
-          fullName: `Outros (${otherCourses.length} cursos)`,
+          fullName: `Outros (${otherCourses.length} ${courseNomenclature.toLowerCase()})`,
           value: otherTotal,
           color: '#6b7280',
           type: 'other'
@@ -100,7 +102,7 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
     }
 
     return allData;
-  }, [leads, courses, postgraduateCourses, courseFilter, maxCourses]);
+  }, [leads, courses, postgraduateCourses, courseFilter, maxCourses, courseNomenclature, postgraduateNomenclature]);
 
   const totalLeads = chartData.reduce((sum, item) => sum + item.value, 0);
 
@@ -121,7 +123,7 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        <p>Nenhum lead por curso ainda</p>
+        <p>Nenhum lead por {courseNomenclature.toLowerCase()} ainda</p>
       </div>
     );
   }
@@ -172,8 +174,8 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="graduation">Graduação</SelectItem>
-                <SelectItem value="postgraduate">Pós-graduação</SelectItem>
+                <SelectItem value="graduation">{courseNomenclature}</SelectItem>
+                <SelectItem value="postgraduate">{postgraduateNomenclature}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -252,25 +254,25 @@ const LeadsByCourseChart = ({ leads, courses }: LeadsByCourseChartProps) => {
       {/* Resumo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
         <div className="text-center p-2 bg-blue-50 rounded">
-          <div className="font-semibold text-blue-700">Graduação</div>
+          <div className="font-semibold text-blue-700">{courseNomenclature}</div>
           <div className="text-blue-600">
             {leads.filter(l => l.course_id).length} leads
           </div>
         </div>
         <div className="text-center p-2 bg-purple-50 rounded">
-          <div className="font-semibold text-purple-700">Pós-graduação</div>
+          <div className="font-semibold text-purple-700">{postgraduateNomenclature}</div>
           <div className="text-purple-600">
             {leads.filter(l => l.postgraduate_course_id).length} leads
           </div>
         </div>
         <div className="text-center p-2 bg-green-50 rounded">
-          <div className="font-semibold text-green-700">Cursos Ativos</div>
+          <div className="font-semibold text-green-700">{courseNomenclature} Ativos</div>
           <div className="text-green-600">
             {chartData.filter(c => c.type !== 'other').length}
           </div>
         </div>
         <div className="text-center p-2 bg-gray-50 rounded">
-          <div className="font-semibold text-gray-700">Média/Curso</div>
+          <div className="font-semibold text-gray-700">Média/{courseNomenclature.slice(0, -1)}</div>
           <div className="text-gray-600">
             {chartData.length > 0 ? Math.round(totalLeads / chartData.filter(c => c.type !== 'other').length) : 0}
           </div>

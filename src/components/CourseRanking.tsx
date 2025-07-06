@@ -2,6 +2,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
+import { useNomenclature } from '@/hooks/useNomenclature';
 
 interface CourseRankingProps {
   leads: any[];
@@ -10,6 +11,7 @@ interface CourseRankingProps {
 
 const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   // Ranking de cursos regulares
   const courseRanking = courses.map((course: any) => {
@@ -17,7 +19,7 @@ const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
     return {
       id: course.id,
       name: course.name,
-      type: 'Graduação',
+      type: courseNomenclature.slice(0, -1), // Remove 's' do final se houver
       leadCount: courseLeads.length,
     };
   }).filter(course => course.leadCount > 0);
@@ -28,7 +30,7 @@ const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
     return {
       id: course.id,
       name: course.name,
-      type: 'Pós-graduação',
+      type: postgraduateNomenclature,
       leadCount: courseLeads.length,
     };
   }).filter(course => course.leadCount > 0);
@@ -41,7 +43,7 @@ const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
   if (allCourses.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        <p>Nenhum curso com leads ainda</p>
+        <p>Nenhum {courseNomenclature.toLowerCase()} com leads ainda</p>
       </div>
     );
   }
@@ -58,7 +60,7 @@ const CourseRanking = ({ leads, courses }: CourseRankingProps) => {
             </div>
             <div>
               <p className="font-medium text-gray-900">{course.name}</p>
-              <Badge variant={course.type === 'Graduação' ? 'default' : 'secondary'} className="text-xs">
+              <Badge variant={course.type === courseNomenclature.slice(0, -1) ? 'default' : 'secondary'} className="text-xs">
                 {course.type}
               </Badge>
             </div>

@@ -264,6 +264,7 @@ export type Database = {
           event_id: string | null
           full_url: string
           id: string
+          original_url: string | null
           short_url: string
           tracking_id: string | null
           type: string | null
@@ -273,6 +274,7 @@ export type Database = {
           event_id?: string | null
           full_url: string
           id?: string
+          original_url?: string | null
           short_url: string
           tracking_id?: string | null
           type?: string | null
@@ -282,6 +284,7 @@ export type Database = {
           event_id?: string | null
           full_url?: string
           id?: string
+          original_url?: string | null
           short_url?: string
           tracking_id?: string | null
           type?: string | null

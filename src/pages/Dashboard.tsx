@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLeads } from '@/hooks/useLeads';
@@ -30,6 +29,7 @@ import {
   GraduationCap,
   BookOpen
 } from 'lucide-react';
+import { useNomenclature } from '@/hooks/useNomenclature';
 
 const Dashboard = () => {
   const { data: leads = [] } = useLeads();
@@ -39,6 +39,7 @@ const Dashboard = () => {
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const { data: metrics } = useConversionMetrics();
   const isMobile = useIsMobile();
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   const [visibility, setVisibility] = useState<DashboardVisibility>({
     stats: true,
@@ -73,7 +74,7 @@ const Dashboard = () => {
       textColor: 'text-pink-700'
     },
     {
-      title: 'Leads Graduação',
+      title: `Leads ${courseNomenclature}`,
       value: graduationLeads.toLocaleString(),
       icon: BookOpen,
       color: 'from-purple-500 to-pink-600',
@@ -81,7 +82,7 @@ const Dashboard = () => {
       textColor: 'text-purple-700'
     },
     {
-      title: 'Leads Pós-graduação',
+      title: `Leads ${postgraduateNomenclature}`,
       value: postgraduateLeads.toLocaleString(),
       icon: GraduationCap,
       color: 'from-pink-600 to-purple-700',
@@ -202,7 +203,7 @@ const Dashboard = () => {
               <CardHeader className="border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <Users className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
-                  <span>Leads por Curso</span>
+                  <span>Leads por {courseNomenclature}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>
@@ -219,7 +220,7 @@ const Dashboard = () => {
               <CardHeader className="border-b bg-gradient-to-r from-pink-600 to-purple-500 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <TrendingUp className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
-                  <span>Cursos Mais Procurados</span>
+                  <span>{courseNomenclature} Mais Procurados</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className={`${isMobile ? 'p-4' : 'p-6'}`}>

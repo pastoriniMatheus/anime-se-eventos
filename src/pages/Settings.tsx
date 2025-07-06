@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe } from 'lucide-react';
+import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe, Type } from 'lucide-react';
 import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
@@ -10,10 +10,13 @@ import DatabaseExport from '@/components/DatabaseExport';
 import WebhookSettings from '@/components/WebhookSettings';
 import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
+import NomenclatureSettings from '@/components/NomenclatureSettings';
+import { useNomenclature } from '@/hooks/useNomenclature';
 
 const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('webhooks');
   const [activeCourseTab, setActiveCourseTab] = useState('cursos');
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   return (
     <div className="p-6 space-y-6">
@@ -22,7 +25,7 @@ const Settings = () => {
       </div>
 
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="webhooks" className="flex items-center space-x-2">
             <Webhook className="h-4 w-4" />
             <span>Webhooks</span>
@@ -35,13 +38,17 @@ const Settings = () => {
             <FileText className="h-4 w-4" />
             <span>Formulário</span>
           </TabsTrigger>
+          <TabsTrigger value="nomenclature" className="flex items-center space-x-2">
+            <Type className="h-4 w-4" />
+            <span>Nomes</span>
+          </TabsTrigger>
           <TabsTrigger value="status" className="flex items-center space-x-2">
             <Palette className="h-4 w-4" />
             <span>Status</span>
           </TabsTrigger>
-          <TabsTrigger value="cursos" className="flex items-center space-x-2">
+          <TabsTrigger value="produtos" className="flex items-center space-x-2">
             <BookOpen className="h-4 w-4" />
-            <span>Cursos</span>
+            <span>Produtos</span>
           </TabsTrigger>
           <TabsTrigger value="api" className="flex items-center space-x-2">
             <Globe className="h-4 w-4" />
@@ -65,20 +72,24 @@ const Settings = () => {
           <FormSettings />
         </TabsContent>
 
+        <TabsContent value="nomenclature">
+          <NomenclatureSettings />
+        </TabsContent>
+
         <TabsContent value="status">
           <StatusManager />
         </TabsContent>
 
-        <TabsContent value="cursos">
+        <TabsContent value="produtos">
           <Tabs value={activeCourseTab} onValueChange={setActiveCourseTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="cursos" className="flex items-center space-x-2">
                 <BookOpen className="h-4 w-4" />
-                <span>Cursos</span>
+                <span>{courseNomenclature}</span>
               </TabsTrigger>
               <TabsTrigger value="pos" className="flex items-center space-x-2">
                 <GraduationCap className="h-4 w-4" />
-                <span>Pós</span>
+                <span>{postgraduateNomenclature}</span>
               </TabsTrigger>
             </TabsList>
 
