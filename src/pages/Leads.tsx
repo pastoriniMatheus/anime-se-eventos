@@ -112,10 +112,10 @@ const Leads = () => {
         whatsapp: editingLead.whatsapp.replace(/\D/g, ''),
         email: editingLead.email.toLowerCase(),
         course_type: editingLead.course_type,
-        course_id: editingLead.course_type === 'course' ? (editingLead.course_id === 'none' ? null : editingLead.course_id) : null,
-        postgraduate_course_id: editingLead.course_type === 'postgraduate' ? (editingLead.postgraduate_course_id === 'none' ? null : editingLead.postgraduate_course_id) : null,
+        course_id: editingLead.course_type === 'course' ? (editingLead.course_id || null) : null,
+        postgraduate_course_id: editingLead.course_type === 'postgraduate' ? (editingLead.postgraduate_course_id || null) : null,
         event_id: editingLead.event_id || null,
-        status_id: editingLead.status_id
+        status_id: editingLead.status_id || leadStatuses[0]?.id || null
       };
 
       const { error } = await supabase
@@ -179,10 +179,10 @@ const Leads = () => {
     setEditingLead({
       ...lead,
       course_type: lead.course_type || 'course',
-      course_id: lead.course_id || 'none',
-      postgraduate_course_id: lead.postgraduate_course_id || 'none',
+      course_id: lead.course_id || '',
+      postgraduate_course_id: lead.postgraduate_course_id || '',
       event_id: lead.event_id || '',
-      status_id: lead.status_id || ''
+      status_id: lead.status_id || leadStatuses[0]?.id || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -288,6 +288,7 @@ const Leads = () => {
                         <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="">Nenhum {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
                         {courses.map((course: any) => (
                           <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                         ))}
@@ -306,6 +307,7 @@ const Leads = () => {
                         <SelectValue placeholder={`Selecione uma ${postgraduateNomenclature.toLowerCase()}`} />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="">Nenhuma {postgraduateNomenclature.toLowerCase()}</SelectItem>
                         {postgraduateCourses.map((course: any) => (
                           <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                         ))}
@@ -323,6 +325,7 @@ const Leads = () => {
                       <SelectValue placeholder="Selecione um evento" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">Nenhum evento</SelectItem>
                       {events.map((event: any) => (
                         <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                       ))}
@@ -561,31 +564,31 @@ const Leads = () => {
                   onValueChange={(value) => setEditingLead({
                     ...editingLead, 
                     course_type: value,
-                    course_id: 'none',
-                    postgraduate_course_id: 'none'
+                    course_id: '',
+                    postgraduate_course_id: ''
                   })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="course">Curso de Graduação</SelectItem>
-                    <SelectItem value="postgraduate">Pós-graduação</SelectItem>
+                    <SelectItem value="course">{courseNomenclature}</SelectItem>
+                    <SelectItem value="postgraduate">{postgraduateNomenclature}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {editingLead.course_type === 'course' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-course">Curso</Label>
+                  <Label htmlFor="edit-course">{courseNomenclature.slice(0, -1)}</Label>
                   <Select 
                     value={editingLead.course_id} 
                     onValueChange={(value) => setEditingLead({...editingLead, course_id: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um curso" />
+                      <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhum curso</SelectItem>
+                      <SelectItem value="">Nenhum {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
                       {courses.map((course: any) => (
                         <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                       ))}
@@ -595,16 +598,16 @@ const Leads = () => {
               )}
               {editingLead.course_type === 'postgraduate' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-postgraduate">Pós-graduação</Label>
+                  <Label htmlFor="edit-postgraduate">{postgraduateNomenclature}</Label>
                   <Select 
                     value={editingLead.postgraduate_course_id} 
                     onValueChange={(value) => setEditingLead({...editingLead, postgraduate_course_id: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma pós-graduação" />
+                      <SelectValue placeholder={`Selecione uma ${postgraduateNomenclature.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Nenhuma pós-graduação</SelectItem>
+                      <SelectItem value="">Nenhuma {postgraduateNomenclature.toLowerCase()}</SelectItem>
                       {postgraduateCourses.map((course: any) => (
                         <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                       ))}
@@ -612,6 +615,23 @@ const Leads = () => {
                   </Select>
                 </div>
               )}
+              <div className="grid gap-2">
+                <Label htmlFor="edit-event">Evento</Label>
+                <Select 
+                  value={editingLead.event_id} 
+                  onValueChange={(value) => setEditingLead({...editingLead, event_id: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum evento</SelectItem>
+                    {events.map((event: any) => (
+                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select 

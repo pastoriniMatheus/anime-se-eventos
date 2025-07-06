@@ -18,9 +18,11 @@ import AcademicInterestStep from '@/components/forms/AcademicInterestStep';
 import PaymentStep from '@/components/forms/PaymentStep';
 import ReceiptUploadStep from '@/components/forms/ReceiptUploadStep';
 import FormProgress from '@/components/forms/FormProgress';
+import ThankYouScreen from '@/components/ThankYouScreen';
 
 const LeadForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [showThankYou, setShowThankYou] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     whatsapp: '',
@@ -201,8 +203,8 @@ const LeadForm = () => {
         setLeadId(newLeadId);
         
         if (!paymentEnabled) {
-          // Se não tem pagamento, finaliza aqui
-          navigate('/');
+          // Se não tem pagamento, mostra tela de agradecimento
+          setShowThankYou(true);
           return;
         }
       } catch (error) {
@@ -223,8 +225,29 @@ const LeadForm = () => {
       title: "Cadastro finalizado!",
       description: "Seu cadastro foi concluído com sucesso!",
     });
-    navigate('/');
+    setShowThankYou(true);
   };
+
+  const handleBackToForm = () => {
+    if (settings.redirect_url) {
+      window.location.href = settings.redirect_url;
+    } else {
+      navigate('/');
+    }
+  };
+
+  // Se deve mostrar tela de agradecimento
+  if (showThankYou) {
+    return (
+      <ThankYouScreen
+        title={settings.thank_you_title || "Obrigado!"}
+        message={settings.thank_you_message || "Seus dados foram enviados com sucesso. Entraremos em contato em breve!"}
+        logoUrl={settings.banner_image_url}
+        redirectUrl={settings.redirect_url}
+        onBackToForm={handleBackToForm}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 lead-form-container">

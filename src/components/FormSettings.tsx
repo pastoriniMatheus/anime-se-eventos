@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { FileText, Save, Upload, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { FileText, Save, Upload, X, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
 
@@ -27,7 +29,10 @@ const FormSettings = () => {
     backgroundColor: '#ffffff',
     textColor: '#1f2937',
     fieldBackgroundColor: '#f9fafb',
-    fieldBorderColor: '#d1d5db'
+    fieldBorderColor: '#d1d5db',
+    paymentValue: '',
+    pixKey: '',
+    paymentQrCodeUrl: ''
   });
 
   useEffect(() => {
@@ -78,6 +83,15 @@ const FormSettings = () => {
         case 'form_field_border_color':
           setFormConfig(prev => ({ ...prev, fieldBorderColor: value }));
           break;
+        case 'form_payment_value':
+          setFormConfig(prev => ({ ...prev, paymentValue: value }));
+          break;
+        case 'form_pix_key':
+          setFormConfig(prev => ({ ...prev, pixKey: value }));
+          break;
+        case 'form_payment_qr_code_url':
+          setFormConfig(prev => ({ ...prev, paymentQrCodeUrl: value }));
+          break;
       }
     });
   }, [settings]);
@@ -98,7 +112,10 @@ const FormSettings = () => {
         { key: 'form_background_color', value: formConfig.backgroundColor },
         { key: 'form_text_color', value: formConfig.textColor },
         { key: 'form_field_background_color', value: formConfig.fieldBackgroundColor },
-        { key: 'form_field_border_color', value: formConfig.fieldBorderColor }
+        { key: 'form_field_border_color', value: formConfig.fieldBorderColor },
+        { key: 'form_payment_value', value: formConfig.paymentValue },
+        { key: 'form_pix_key', value: formConfig.pixKey },
+        { key: 'form_payment_qr_code_url', value: formConfig.paymentQrCodeUrl }
       ];
 
       for (const setting of settingsToSave) {
@@ -134,8 +151,24 @@ const FormSettings = () => {
     }
   };
 
+  const handleQrCodeUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        handleChange('paymentQrCodeUrl', result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const removeBannerImage = () => {
     handleChange('bannerImageUrl', '');
+  };
+
+  const removeQrCodeImage = () => {
+    handleChange('paymentQrCodeUrl', '');
   };
 
   return (
@@ -149,7 +182,8 @@ const FormSettings = () => {
           Personalize o formulário de captura de leads
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-8">
+        {/* Textos do Formulário */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Textos do Formulário</h3>
           
@@ -238,7 +272,7 @@ const FormSettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="redirect-url">URL de Redirecionamento</Label>
+              <Label htmlFor="redirect-url">URL de Redirecionamento (opcional)</Label>
               <Input
                 id="redirect-url"
                 value={formConfig.redirectUrl}
@@ -260,6 +294,85 @@ const FormSettings = () => {
           </div>
         </div>
 
+        {/* Configurações de Pagamento PIX */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Configurações de Pagamento PIX
+          </h3>
+          <p className="text-sm text-gray-600">
+            Configure os dados de pagamento PIX para habilitar a funcionalidade de pagamento no formulário
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment-value">Valor do Pagamento</Label>
+              <Input
+                id="payment-value"
+                value={formConfig.paymentValue}
+                onChange={(e) => handleChange('paymentValue', e.target.value)}
+                placeholder="R$ 200,00"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="pix-key">Chave PIX</Label>
+              <Input
+                id="pix-key"
+                value={formConfig.pixKey}
+                onChange={(e) => handleChange('pixKey', e.target.value)}
+                placeholder="pagamento@instituicao.com.br"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="qr-code-upload">QR Code PIX (opcional)</Label>
+            <div className="flex items-center space-x-2">
+              <Input
+                id="qr-code-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleQrCodeUpload}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('qr-code-upload')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Fazer Upload do QR Code
+              </Button>
+              {formConfig.paymentQrCodeUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={removeQrCodeImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {formConfig.paymentQrCodeUrl && (
+              <div className="mt-2">
+                <img 
+                  src={formConfig.paymentQrCodeUrl} 
+                  alt="QR Code PIX" 
+                  className="h-32 w-32 object-contain border rounded mx-auto"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded">
+            <strong>Nota:</strong> Para ativar o fluxo de pagamento, preencha pelo menos o "Valor do Pagamento" e a "Chave PIX". 
+            O QR Code é opcional mas recomendado para facilitar o pagamento.
+          </div>
+        </div>
+
+        {/* Cores do Formulário */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Cores do Formulário</h3>
           
