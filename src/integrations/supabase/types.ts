@@ -437,6 +437,10 @@ export type Database = {
           lead: Json
         }[]
       }
+      increment_qr_scan: {
+        Args: { tracking_id: string }
+        Returns: undefined
+      }
       verify_login: {
         Args: { p_username: string; p_password: string }
         Returns: {
