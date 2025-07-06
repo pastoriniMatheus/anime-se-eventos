@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { FileText, Save } from 'lucide-react';
+import { FileText, Save, Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSystemSettings, useUpdateSystemSetting } from '@/hooks/useSystemSettings';
 
@@ -18,6 +17,7 @@ const FormSettings = () => {
     title: 'Cadastre-se agora',
     subtitle: 'Preencha seus dados',
     description: 'Complete o formulário abaixo para se inscrever',
+    bannerImageUrl: '',
     thankYouTitle: 'Obrigado!',
     thankYouMessage: 'Sua inscrição foi realizada com sucesso!',
     redirectUrl: '',
@@ -31,7 +31,6 @@ const FormSettings = () => {
   });
 
   useEffect(() => {
-    // Carregar configurações do banco
     settings.forEach(setting => {
       const key = setting.key;
       const value = typeof setting.value === 'string' ? setting.value : JSON.stringify(setting.value);
@@ -45,6 +44,9 @@ const FormSettings = () => {
           break;
         case 'form_description':
           setFormConfig(prev => ({ ...prev, description: value }));
+          break;
+        case 'form_banner_image_url':
+          setFormConfig(prev => ({ ...prev, bannerImageUrl: value }));
           break;
         case 'form_thank_you_title':
           setFormConfig(prev => ({ ...prev, thankYouTitle: value }));
@@ -86,6 +88,7 @@ const FormSettings = () => {
         { key: 'form_title', value: formConfig.title },
         { key: 'form_subtitle', value: formConfig.subtitle },
         { key: 'form_description', value: formConfig.description },
+        { key: 'form_banner_image_url', value: formConfig.bannerImageUrl },
         { key: 'form_thank_you_title', value: formConfig.thankYouTitle },
         { key: 'form_thank_you_message', value: formConfig.thankYouMessage },
         { key: 'form_redirect_url', value: formConfig.redirectUrl },
@@ -117,6 +120,22 @@ const FormSettings = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormConfig(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBannerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        handleChange('bannerImageUrl', result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeBannerImage = () => {
+    handleChange('bannerImageUrl', '');
   };
 
   return (
@@ -165,6 +184,46 @@ const FormSettings = () => {
               placeholder="Descrição do formulário"
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="banner-upload">Banner/Capa do Formulário</Label>
+            <div className="flex items-center space-x-2">
+              <Input
+                id="banner-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleBannerUpload}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('banner-upload')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Fazer Upload do Banner
+              </Button>
+              {formConfig.bannerImageUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={removeBannerImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {formConfig.bannerImageUrl && (
+              <div className="mt-2">
+                <img 
+                  src={formConfig.bannerImageUrl} 
+                  alt="Banner do formulário" 
+                  className="h-32 w-full object-cover border rounded"
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -110,6 +109,9 @@ const LeadForm = () => {
     if (trackingId) {
       const fetchQRCodeData = async () => {
         try {
+          // Increment scan count
+          await supabase.rpc('increment_qr_scan', { tracking_id: trackingId });
+          
           const { data: qrCode, error } = await supabase
             .from('qr_codes')
             .select('*, event:events(name, whatsapp_number)')
@@ -210,6 +212,7 @@ const LeadForm = () => {
           .eq('id', scanSessionId);
       }
 
+      // Mostrar tela de agradecimento diretamente
       setShowThankYou(true);
     } catch (error) {
       console.error('Erro ao enviar formulário:', error);
@@ -240,7 +243,7 @@ const LeadForm = () => {
       });
       return;
     }
-    setCurrentStep(prev => Math.min(prev + 1, 3));
+    setCurrentStep(prev => Math.min(prev + 1, 2)); // Removido o step 3 (resumo)
   };
 
   const prevStep = () => {
@@ -260,13 +263,23 @@ const LeadForm = () => {
 
   const stepTitles = [
     "Dados Pessoais",
-    "Interesse Acadêmico", 
-    "Finalização"
+    "Interesse Acadêmico"
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 lead-form-container">
       <Card className="w-full max-w-2xl shadow-2xl border-0 bg-white/90 backdrop-blur-sm lead-form-card">
+        {/* Banner/Capa do formulário */}
+        {settings.banner_image_url && (
+          <div className="w-full h-48 overflow-hidden rounded-t-lg">
+            <img 
+              src={settings.banner_image_url} 
+              alt="Banner do formulário" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        
         <CardHeader className="text-center lead-form-header text-white rounded-t-lg">
           <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
             <User className="w-6 h-6" />
@@ -278,14 +291,14 @@ const LeadForm = () => {
           
           {/* Progress Steps */}
           <div className="flex justify-center mt-4 space-x-4">
-            {[1, 2, 3].map((step) => (
+            {[1, 2].map((step) => (
               <div key={step} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   step <= currentStep ? 'bg-white text-blue-600' : 'bg-blue-400 text-white'
                 }`}>
                   {step}
                 </div>
-                {step < 3 && <div className={`w-8 h-0.5 ml-2 ${step < currentStep ? 'bg-white' : 'bg-blue-400'}`} />}
+                {step < 2 && <div className={`w-8 h-0.5 ml-2 ${step < currentStep ? 'bg-white' : 'bg-blue-400'}`} />}
               </div>
             ))}
           </div>
@@ -426,12 +439,7 @@ const LeadForm = () => {
                     </Select>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Etapa 3: Finalização */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
                 {!qrCodeData && (
                   <div className="space-y-2">
                     <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
@@ -452,25 +460,6 @@ const LeadForm = () => {
                     </Select>
                   </div>
                 )}
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-medium text-gray-900 mb-3 lead-form-label">Resumo dos seus dados:</h3>
-                  <div className="space-y-2 text-sm">
-                    <p className="lead-form-label"><strong>Nome:</strong> {formData.name}</p>
-                    <p className="lead-form-label"><strong>WhatsApp:</strong> {formData.whatsapp}</p>
-                    <p className="lead-form-label"><strong>E-mail:</strong> {formData.email}</p>
-                    <p className="lead-form-label"><strong>Tipo:</strong> {formData.courseType === 'course' ? courseNomenclature : postgraduateNomenclature}</p>
-                    {formData.courseId && (
-                      <p className="lead-form-label">
-                        <strong>Curso:</strong> {
-                          (formData.courseType === 'course' ? courses : postgraduateCourses)
-                            .find(c => c.id === formData.courseId)?.name
-                        }
-                      </p>
-                    )}
-                    {formData.shift && <p className="lead-form-label"><strong>Turno:</strong> {formData.shift}</p>}
-                  </div>
-                </div>
               </div>
             )}
 
@@ -488,7 +477,7 @@ const LeadForm = () => {
               )}
               
               <div className="ml-auto">
-                {currentStep < 3 ? (
+                {currentStep < 2 ? (
                   <Button 
                     type="button"
                     onClick={nextStep}

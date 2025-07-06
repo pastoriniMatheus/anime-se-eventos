@@ -44,7 +44,7 @@ export const useConversionMetrics = () => {
         
         if (sessionsError) throw sessionsError;
 
-        // Buscar dados de QR codes com contadores de scan
+        // Buscar dados de QR codes com contadores de scan atualizados
         const { data: qrCodes, error: qrError } = await supabase
           .from('qr_codes')
           .select('id, scans, type');
@@ -54,7 +54,7 @@ export const useConversionMetrics = () => {
         const sessionsData = sessions || [];
         const qrCodesData = qrCodes || [];
         
-        // Calcular total de scans a partir dos QR codes
+        // Calcular total de scans a partir dos QR codes (agora com a coluna correta)
         const totalScansFromQR = qrCodesData.reduce((sum, qr) => sum + (qr.scans || 0), 0);
         
         // Usar o maior valor entre sessões registradas e contador dos QR codes

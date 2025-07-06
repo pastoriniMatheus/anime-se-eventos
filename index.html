@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -7,13 +8,11 @@
     <meta name="description" content="Gestor de Leads de Eventos" />
     <meta name="author" content="Matheus Pastorini" />
 
-  <!-- Favicon personalizado -->
- 
-    <link rel="icon" href="https://cesmac.edu.br/common/img/global/favicon/favicon.png?light" media="(prefers-color-scheme:no-preference)">
+    <!-- Favicon dinâmico baseado na configuração do banco -->
+    <link id="dynamic-favicon" rel="icon" href="https://cesmac.edu.br/common/img/global/favicon/favicon.png?light" media="(prefers-color-scheme:no-preference)">
     <link rel="icon" href="https://cesmac.edu.br/common/img/global/favicon/favicon-dark.png?dark"  media="(prefers-color-scheme:dark)">
     <link rel="icon" href="https://cesmac.edu.br/common/img/global/favicon/favicon.png?light" media="(prefers-color-scheme:light)">
 
-    
     <meta property="og:title" content="Eventos Cesmac" />
     <meta property="og:description" content="Gestor de Leads de Eventos" />
     <meta property="og:type" content="website" />
@@ -22,6 +21,29 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="" />
     <meta name="twitter:image" content="" />
+
+    <script>
+      // Carregar favicon dinâmico do banco de dados
+      async function loadDynamicFavicon() {
+        try {
+          const response = await fetch('/api/settings/visual_favicon_url');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.value) {
+              const faviconLink = document.getElementById('dynamic-favicon');
+              if (faviconLink) {
+                faviconLink.href = data.value;
+              }
+            }
+          }
+        } catch (error) {
+          console.log('Usando favicon padrão');
+        }
+      }
+      
+      // Executar quando a página carregar
+      document.addEventListener('DOMContentLoaded', loadDynamicFavicon);
+    </script>
   </head>
 
   <body>
