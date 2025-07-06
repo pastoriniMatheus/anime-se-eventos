@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Copy, Search, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Copy, Search, Download, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
@@ -45,8 +45,7 @@ const Leads = () => {
     course_id: '',
     postgraduate_course_id: '',
     event_id: '',
-    status_id: '',
-    shift: ''
+    status_id: ''
   });
 
   const handleCreateLead = async () => {
@@ -68,8 +67,7 @@ const Leads = () => {
         course_id: newLead.course_type === 'course' ? (newLead.course_id || null) : null,
         postgraduate_course_id: newLead.course_type === 'postgraduate' ? (newLead.postgraduate_course_id || null) : null,
         event_id: newLead.event_id || null,
-        status_id: newLead.status_id || leadStatuses[0]?.id,
-        shift: newLead.shift || null
+        status_id: newLead.status_id || leadStatuses[0]?.id
       };
 
       const { error } = await supabase
@@ -87,8 +85,7 @@ const Leads = () => {
         course_id: '',
         postgraduate_course_id: '',
         event_id: '',
-        status_id: '',
-        shift: ''
+        status_id: ''
       });
       setIsCreateDialogOpen(false);
 
@@ -117,8 +114,7 @@ const Leads = () => {
         course_id: editingLead.course_type === 'course' ? (editingLead.course_id === 'none' ? null : editingLead.course_id) : null,
         postgraduate_course_id: editingLead.course_type === 'postgraduate' ? (editingLead.postgraduate_course_id === 'none' ? null : editingLead.postgraduate_course_id) : null,
         event_id: editingLead.event_id || null,
-        status_id: editingLead.status_id,
-        shift: editingLead.shift === 'none' ? null : editingLead.shift
+        status_id: editingLead.status_id
       };
 
       const { error } = await supabase
@@ -185,8 +181,7 @@ const Leads = () => {
       course_id: lead.course_id || 'none',
       postgraduate_course_id: lead.postgraduate_course_id || 'none',
       event_id: lead.event_id || '',
-      status_id: lead.status_id || '',
-      shift: lead.shift || 'none'
+      status_id: lead.status_id || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -333,22 +328,6 @@ const Leads = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="shift">Turno</Label>
-                  <Select 
-                    value={newLead.shift} 
-                    onValueChange={(value) => setNewLead({...newLead, shift: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um turno" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manhã">Manhã</SelectItem>
-                      <SelectItem value="tarde">Tarde</SelectItem>
-                      <SelectItem value="noite">Noite</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -440,7 +419,7 @@ const Leads = () => {
                 <TableHead>{courseNomenclature.slice(0, -1)}</TableHead>
                 <TableHead>Evento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Turno</TableHead>
+                <TableHead>Comprovante</TableHead>
                 <TableHead>Criado em</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
@@ -486,7 +465,20 @@ const Leads = () => {
                       '-'
                     )}
                   </TableCell>
-                  <TableCell>{lead.shift || '-'}</TableCell>
+                  <TableCell>
+                    {lead.receipt_url ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(lead.receipt_url, '_blank')}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                   </TableCell>
@@ -632,23 +624,6 @@ const Leads = () => {
                     {leadStatuses.map((status: any) => (
                       <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-shift">Turno</Label>
-                <Select 
-                  value={editingLead.shift} 
-                  onValueChange={(value) => setEditingLead({...editingLead, shift: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um turno" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum turno</SelectItem>
-                    <SelectItem value="manhã">Manhã</SelectItem>
-                    <SelectItem value="tarde">Tarde</SelectItem>
-                    <SelectItem value="noite">Noite</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

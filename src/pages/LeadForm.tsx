@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User, Phone, Mail, BookOpen, Calendar, GraduationCap } from 'lucide-react';
 import ThankYouScreen from '@/components/ThankYouScreen';
+import PaymentScreen from '@/components/PaymentScreen';
 
 const LeadForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -29,6 +30,8 @@ const LeadForm = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null);
   const [qrCodeData, setQrCodeData] = useState<any>(null);
   const [scanSessionId, setScanSessionId] = useState<string | null>(null);
 
@@ -52,7 +55,6 @@ const LeadForm = () => {
     return settingsObj;
   }, [settingsArray]);
 
-  // Aplicar cores personalizadas via CSS
   useEffect(() => {
     if (settings.primary_color || settings.secondary_color || settings.button_color || 
         settings.background_color || settings.text_color || settings.field_background_color || 
@@ -210,8 +212,9 @@ const LeadForm = () => {
           .eq('id', scanSessionId);
       }
 
-      // Mostrar tela de agradecimento diretamente
-      setShowThankYou(true);
+      // Store lead ID and show payment screen
+      setLeadId(lead.id);
+      setShowPayment(true);
     } catch (error) {
       console.error('Erro ao enviar formulário:', error);
       toast({
@@ -248,13 +251,46 @@ const LeadForm = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
+  const handlePaymentComplete = () => {
+    setShowPayment(false);
+    setShowThankYou(true);
+  };
+
+  const handleBackToForm = () => {
+    setShowPayment(false);
+    setShowThankYou(false);
+    setCurrentStep(1);
+    setFormData({
+      name: '',
+      whatsapp: '',
+      email: '',
+      courseId: '',
+      eventId: qrCodeData?.event_id || '',
+      courseType: 'course'
+    });
+    setLeadId(null);
+  };
+
   if (showThankYou) {
     return (
       <ThankYouScreen 
-        title={settings.thank_you_title || "Obrigado!"}
-        message={settings.thank_you_message || "Seus dados foram enviados com sucesso. Entraremos em contato em breve!"}
+        title={settings.thank_you_title || "Cadastro Finalizado!"}
+        message={settings.thank_you_message || "Obrigado! Seu cadastro foi finalizado com sucesso. Entraremos em contato em breve!"}
         redirectUrl={settings.redirect_url}
-        onBackToForm={() => setShowThankYou(false)}
+        onBackToForm={handleBackToForm}
+      />
+    );
+  }
+
+  if (showPayment && leadId) {
+    return (
+      <PaymentScreen 
+        leadId={leadId}
+        onComplete={handlePaymentComplete}
+        onBackToForm={handleBackToForm}
+        paymentValue={settings.payment_value || "R$ 200,00"}
+        pixKey={settings.pix_key || "pagamento@instituicao.com.br"}
+        qrCodeUrl={settings.payment_qr_code_url}
       />
     );
   }
@@ -470,7 +506,7 @@ const LeadForm = () => {
                     className="px-6 lead-form-button hover:opacity-90 text-white font-semibold transition-all duration-200 transform hover:scale-105"
                     disabled={isLoading || isValidating}
                   >
-                    {isLoading ? 'Enviando...' : 'Finalizar Cadastro'}
+                    {isLoading ? 'Enviando...' : 'Continuar para Pagamento'}
                   </Button>
                 )}
               </div>
