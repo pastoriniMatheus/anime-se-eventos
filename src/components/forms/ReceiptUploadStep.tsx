@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Upload, CheckCircle } from 'lucide-react';
+import { Upload, CheckCircle, FileImage, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -104,52 +104,91 @@ const ReceiptUploadStep = ({ leadId, onUploadComplete }: ReceiptUploadStepProps)
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-green-800 mb-2 flex items-center justify-center gap-2">
-          <Upload className="w-5 h-5" />
-          Enviar Comprovante de Pagamento
-        </h3>
-        <p className="text-gray-600">Envie o comprovante do pagamento PIX realizado</p>
+        <div className="inline-flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+          <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full text-white">
+            <Upload className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-green-800">Enviar Comprovante</h3>
+            <p className="text-green-600">Quase lá! Só falta o comprovante do PIX</p>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="receipt">Selecione o comprovante de pagamento</Label>
-          <Input
-            id="receipt"
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="cursor-pointer"
-          />
-          <p className="text-sm text-gray-500">
-            Formatos aceitos: JPG, PNG, GIF (máximo 5MB)
-          </p>
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <Label htmlFor="receipt" className="text-base font-semibold text-gray-700">
+            📎 Selecione o comprovante de pagamento
+          </Label>
+          
+          <div className="lead-form-upload-area p-8 text-center cursor-pointer" 
+               onClick={() => document.getElementById('receipt')?.click()}>
+            <Input
+              id="receipt"
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            
+            <div className="space-y-4">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center">
+                <FileImage className="w-8 h-8 text-white" />
+              </div>
+              
+              <div>
+                <p className="text-lg font-semibold text-gray-700">
+                  {selectedFile ? selectedFile.name : 'Clique para selecionar o arquivo'}
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Formatos aceitos: JPG, PNG, GIF (máximo 5MB)
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {previewUrl && (
-          <div className="mt-4">
-            <p className="text-sm font-medium mb-2">Pré-visualização:</p>
-            <img 
-              src={previewUrl} 
-              alt="Preview do comprovante" 
-              className="max-w-full h-48 object-contain border border-gray-200 rounded mx-auto"
-            />
+          <div className="space-y-4">
+            <Label className="text-base font-semibold text-gray-700">
+              👁️ Pré-visualização
+            </Label>
+            <div className="lead-form-qr-section p-4">
+              <img 
+                src={previewUrl} 
+                alt="Preview do comprovante" 
+                className="max-w-full h-64 object-contain mx-auto rounded-lg shadow-md"
+              />
+            </div>
           </div>
         )}
 
         <Button
           onClick={handleUploadReceipt}
           disabled={!selectedFile || isUploading}
-          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+          className="w-full py-4 text-lg font-semibold lead-form-button"
         >
-          {isUploading ? 'Enviando...' : 'Finalizar Cadastro'}
-          {!isUploading && <CheckCircle className="w-4 h-4 ml-2" />}
+          {isUploading ? (
+            <>
+              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-3"></div>
+              Enviando...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5 mr-3" />
+              Finalizar Cadastro
+            </>
+          )}
         </Button>
       </div>
 
-      <div className="text-center text-sm text-gray-600 mt-4 p-4 bg-blue-50 rounded-lg">
+      <div className="text-center text-sm text-gray-600 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <CheckCircle className="w-4 h-4 text-blue-600" />
+          <span className="font-semibold text-blue-800">Última etapa!</span>
+        </div>
         <p>Após o envio do comprovante, nossa equipe entrará em contato em até 24 horas para confirmar seu cadastro.</p>
       </div>
     </div>

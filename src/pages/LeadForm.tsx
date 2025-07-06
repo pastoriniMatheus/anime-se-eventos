@@ -12,7 +12,7 @@ import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { useLeadSubmission } from '@/hooks/useLeadSubmission';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Calendar } from 'lucide-react';
+import { User, Calendar, Sparkles } from 'lucide-react';
 import PersonalInfoStep from '@/components/forms/PersonalInfoStep';
 import AcademicInterestStep from '@/components/forms/AcademicInterestStep';
 import PaymentStep from '@/components/forms/PaymentStep';
@@ -63,53 +63,181 @@ const LeadForm = () => {
     ? ["Dados Pessoais", "Interesse Acadêmico", "Pagamento", "Comprovante"]
     : ["Dados Pessoais", "Interesse Acadêmico"];
 
-  // Apply dynamic styles
+  // Apply dynamic styles with enhanced color system
   useEffect(() => {
-    if (settings.primary_color || settings.secondary_color || settings.button_color || 
-        settings.background_color || settings.text_color || settings.field_background_color || 
-        settings.field_border_color) {
+    const primaryColor = settings.primary_color || '#e91e63';
+    const secondaryColor = settings.secondary_color || '#9c27b0';
+    const accentColor = settings.accent_color || '#ff1493';
+    const buttonColor = settings.button_color || '#e91e63';
+    const backgroundColor = settings.background_color || '#ffffff';
+    const textColor = settings.text_color || '#1f2937';
+    const fieldBgColor = settings.field_background_color || '#f9fafb';
+    const fieldBorderColor = settings.field_border_color || '#e91e63';
+    const cardBgColor = settings.card_background_color || '#ffffff';
+    const headerGradientStart = settings.header_gradient_start || '#e91e63';
+    const headerGradientEnd = settings.header_gradient_end || '#9c27b0';
+
+    const style = document.createElement('style');
+    style.id = 'dynamic-form-styles';
+    
+    const css = `
+      .lead-form-container {
+        background: linear-gradient(135deg, ${backgroundColor}, ${primaryColor}15) !important;
+        min-height: 100vh;
+      }
       
-      const style = document.createElement('style');
-      style.id = 'dynamic-form-styles';
+      .lead-form-card {
+        background: ${cardBgColor} !important;
+        color: ${textColor} !important;
+        border: 2px solid ${primaryColor}20 !important;
+        box-shadow: 0 25px 50px -12px ${primaryColor}25 !important;
+        backdrop-filter: blur(10px) !important;
+      }
       
-      const css = `
-        .lead-form-container {
-          background: ${settings.background_color || '#ffffff'} !important;
-          color: ${settings.text_color || '#1f2937'} !important;
-        }
-        .lead-form-card {
-          background: ${settings.background_color || '#ffffff'} !important;
-          color: ${settings.text_color || '#1f2937'} !important;
-        }
-        .lead-form-header {
-          background: linear-gradient(135deg, ${settings.primary_color || '#3b82f6'}, ${settings.secondary_color || '#f59e0b'}) !important;
-        }
-        .lead-form-input {
-          background: ${settings.field_background_color || '#f9fafb'} !important;
-          border-color: ${settings.field_border_color || '#d1d5db'} !important;
-          color: ${settings.text_color || '#1f2937'} !important;
-        }
-        .lead-form-button {
-          background: linear-gradient(135deg, ${settings.button_color || '#10b981'}, ${settings.primary_color || '#3b82f6'}) !important;
-        }
-        .lead-form-step-button {
-          background: ${settings.primary_color || '#3b82f6'} !important;
-        }
-        .lead-form-label {
-          color: ${settings.text_color || '#1f2937'} !important;
-        }
-      `;
+      .lead-form-header {
+        background: linear-gradient(135deg, ${headerGradientStart}, ${headerGradientEnd}) !important;
+        position: relative;
+        overflow: hidden;
+      }
       
-      style.textContent = css;
-      document.head.appendChild(style);
+      .lead-form-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, transparent 30%, ${accentColor}20 50%, transparent 70%);
+        animation: shimmer 3s ease-in-out infinite;
+      }
       
-      return () => {
-        const existingStyle = document.getElementById('dynamic-form-styles');
-        if (existingStyle) {
-          existingStyle.remove();
-        }
-      };
-    }
+      @keyframes shimmer {
+        0%, 100% { transform: translateX(-100%); }
+        50% { transform: translateX(100%); }
+      }
+      
+      .lead-form-input {
+        background: ${fieldBgColor} !important;
+        border: 2px solid ${fieldBorderColor}40 !important;
+        color: ${textColor} !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+      }
+      
+      .lead-form-input:focus {
+        border-color: ${primaryColor} !important;
+        box-shadow: 0 0 0 3px ${primaryColor}20 !important;
+        transform: translateY(-1px) !important;
+      }
+      
+      .lead-form-button {
+        background: linear-gradient(135deg, ${buttonColor}, ${secondaryColor}) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .lead-form-button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 25px -5px ${buttonColor}40 !important;
+      }
+      
+      .lead-form-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+      }
+      
+      .lead-form-button:hover::before {
+        left: 100%;
+      }
+      
+      .lead-form-step-button {
+        background: linear-gradient(135deg, ${primaryColor}, ${accentColor}) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+      }
+      
+      .lead-form-step-button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px -5px ${primaryColor}50 !important;
+      }
+      
+      .lead-form-label {
+        color: ${textColor} !important;
+        font-weight: 500 !important;
+      }
+      
+      .lead-form-progress-active {
+        background: ${accentColor} !important;
+        box-shadow: 0 0 15px ${accentColor}60 !important;
+      }
+      
+      .lead-form-progress-completed {
+        background: ${primaryColor} !important;
+      }
+      
+      .lead-form-progress-line-active {
+        background: ${primaryColor} !important;
+      }
+      
+      .lead-form-select {
+        border: 2px solid ${fieldBorderColor}40 !important;
+        border-radius: 12px !important;
+        background: ${fieldBgColor} !important;
+      }
+      
+      .lead-form-select:focus {
+        border-color: ${primaryColor} !important;
+        box-shadow: 0 0 0 3px ${primaryColor}20 !important;
+      }
+      
+      .lead-form-radio {
+        accent-color: ${primaryColor} !important;
+      }
+      
+      .lead-form-payment-card {
+        border: 2px solid ${primaryColor}30 !important;
+        background: linear-gradient(135deg, ${fieldBgColor}, ${primaryColor}05) !important;
+        border-radius: 16px !important;
+      }
+      
+      .lead-form-qr-section {
+        background: linear-gradient(135deg, ${accentColor}10, ${primaryColor}10) !important;
+        border: 2px solid ${primaryColor}20 !important;
+        border-radius: 16px !important;
+      }
+      
+      .lead-form-upload-area {
+        border: 2px dashed ${primaryColor}50 !important;
+        background: linear-gradient(135deg, ${fieldBgColor}, ${primaryColor}05) !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease !important;
+      }
+      
+      .lead-form-upload-area:hover {
+        border-color: ${primaryColor} !important;
+        background: ${primaryColor}10 !important;
+      }
+    `;
+    
+    style.textContent = css;
+    document.head.appendChild(style);
+    
+    return () => {
+      const existingStyle = document.getElementById('dynamic-form-styles');
+      if (existingStyle) {
+        existingStyle.remove();
+      }
+    };
   }, [settings]);
 
   // Handle QR code tracking
@@ -250,25 +378,28 @@ const LeadForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 lead-form-container">
-      <Card className="w-full max-w-2xl shadow-2xl border-0 bg-white/90 backdrop-blur-sm lead-form-card">
+    <div className="min-h-screen lead-form-container flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl lead-form-card">
         {settings.banner_image_url && (
-          <div className="w-full h-48 overflow-hidden rounded-t-lg">
+          <div className="w-full h-48 overflow-hidden rounded-t-lg relative">
             <img 
               src={settings.banner_image_url} 
               alt="Banner do formulário" 
               className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
           </div>
         )}
         
-        <CardHeader className="text-center lead-form-header text-white rounded-t-lg">
+        <CardHeader className="text-center lead-form-header text-white rounded-t-lg relative z-10">
           <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
-            <User className="w-6 h-6" />
+            <div className="p-2 bg-white/20 rounded-full backdrop-blur-sm">
+              <Sparkles className="w-6 h-6" />
+            </div>
             {settings.title || 'Cadastro de Lead'}
           </CardTitle>
           {settings.subtitle && (
-            <p className="text-blue-100 mt-2">{settings.subtitle}</p>
+            <p className="text-white/90 mt-2 font-medium">{settings.subtitle}</p>
           )}
           
           <FormProgress 
@@ -280,10 +411,10 @@ const LeadForm = () => {
         
         <CardContent className="p-8">
           {qrCodeData && (
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 text-blue-800">
+            <div className="mb-6 p-4 lead-form-qr-section">
+              <div className="flex items-center gap-2 font-medium">
                 <Calendar className="w-4 h-4" />
-                <span className="font-medium">Evento: {qrCodeData.event?.name}</span>
+                <span>Evento: {qrCodeData.event?.name}</span>
               </div>
             </div>
           )}
@@ -333,7 +464,7 @@ const LeadForm = () => {
                 type="button"
                 variant="outline"
                 onClick={prevStep}
-                className="px-6"
+                className="px-6 border-2 hover:bg-gray-50"
               >
                 Voltar
               </Button>
@@ -344,7 +475,7 @@ const LeadForm = () => {
                 <Button 
                   type="button"
                   onClick={nextStep}
-                  className="px-6 lead-form-step-button hover:opacity-90"
+                  className="px-8 lead-form-step-button hover:opacity-90 font-semibold"
                   disabled={isLoading || isValidating}
                 >
                   {isLoading ? 'Enviando...' : (currentStep === 2 && !paymentEnabled ? 'Finalizar Cadastro' : 'Próximo')}
