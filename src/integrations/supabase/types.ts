@@ -109,6 +109,7 @@ export type Database = {
           id: string
           name: string
           postgraduate_course_id: string | null
+          receipt_url: string | null
           scan_session_id: string | null
           status_id: string | null
           updated_at: string | null
@@ -123,6 +124,7 @@ export type Database = {
           id?: string
           name: string
           postgraduate_course_id?: string | null
+          receipt_url?: string | null
           scan_session_id?: string | null
           status_id?: string | null
           updated_at?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           id?: string
           name?: string
           postgraduate_course_id?: string | null
+          receipt_url?: string | null
           scan_session_id?: string | null
           status_id?: string | null
           updated_at?: string | null

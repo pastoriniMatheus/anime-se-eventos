@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,6 @@ import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User, Phone, Mail, BookOpen, Calendar, GraduationCap } from 'lucide-react';
-import ThankYouScreen from '@/components/ThankYouScreen';
 import PaymentScreen from '@/components/PaymentScreen';
 
 const LeadForm = () => {
@@ -29,7 +29,6 @@ const LeadForm = () => {
     courseType: 'course'
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [showThankYou, setShowThankYou] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [qrCodeData, setQrCodeData] = useState<any>(null);
@@ -252,13 +251,11 @@ const LeadForm = () => {
   };
 
   const handlePaymentComplete = () => {
-    setShowPayment(false);
-    setShowThankYou(true);
+    navigate('/');
   };
 
   const handleBackToForm = () => {
     setShowPayment(false);
-    setShowThankYou(false);
     setCurrentStep(1);
     setFormData({
       name: '',
@@ -270,17 +267,6 @@ const LeadForm = () => {
     });
     setLeadId(null);
   };
-
-  if (showThankYou) {
-    return (
-      <ThankYouScreen 
-        title={settings.thank_you_title || "Cadastro Finalizado!"}
-        message={settings.thank_you_message || "Obrigado! Seu cadastro foi finalizado com sucesso. Entraremos em contato em breve!"}
-        redirectUrl={settings.redirect_url}
-        onBackToForm={handleBackToForm}
-      />
-    );
-  }
 
   if (showPayment && leadId) {
     return (
@@ -506,7 +492,7 @@ const LeadForm = () => {
                     className="px-6 lead-form-button hover:opacity-90 text-white font-semibold transition-all duration-200 transform hover:scale-105"
                     disabled={isLoading || isValidating}
                   >
-                    {isLoading ? 'Enviando...' : 'Continuar para Pagamento'}
+                    {isLoading ? 'Enviando...' : 'Finalizar Cadastro'}
                   </Button>
                 )}
               </div>

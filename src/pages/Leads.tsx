@@ -64,10 +64,10 @@ const Leads = () => {
         whatsapp: newLead.whatsapp.replace(/\D/g, ''),
         email: newLead.email.toLowerCase(),
         course_type: newLead.course_type,
-        course_id: newLead.course_type === 'course' ? (newLead.course_id || null) : null,
-        postgraduate_course_id: newLead.course_type === 'postgraduate' ? (newLead.postgraduate_course_id || null) : null,
+        course_id: newLead.course_type === 'course' && newLead.course_id ? newLead.course_id : null,
+        postgraduate_course_id: newLead.course_type === 'postgraduate' && newLead.postgraduate_course_id ? newLead.postgraduate_course_id : null,
         event_id: newLead.event_id || null,
-        status_id: newLead.status_id || leadStatuses[0]?.id
+        status_id: newLead.status_id || leadStatuses[0]?.id || null
       };
 
       const { error } = await supabase
@@ -94,6 +94,7 @@ const Leads = () => {
         description: "Lead criado com sucesso!",
       });
     } catch (error: any) {
+      console.error('Erro ao criar lead:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao criar lead",
