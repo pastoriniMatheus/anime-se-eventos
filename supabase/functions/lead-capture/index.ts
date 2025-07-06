@@ -14,135 +14,144 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    if (req.method !== 'POST') {
-      return new Response('Method not allowed', { 
-        status: 405,
+    console.log('Lead capture request received');
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase environment variables');
+      return new Response('Server configuration error', { 
+        status: 500,
         headers: corsHeaders 
       });
     }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { name, email, whatsapp, course_id, course_name, shift, tracking_id } = await req.json();
+    const { 
+      name, 
+      email, 
+      whatsapp, 
+      eventName, 
+      trackingId, 
+      courseId, 
+      postgraduateCourseId, 
+      courseType,
+      receiptUrl 
+    } = await req.json();
 
-    console.log('Dados recebidos:', { name, email, whatsapp, course_id, course_name, shift, tracking_id });
+    console.log('Form data received:', { 
+      name, 
+      email, 
+      whatsapp, 
+      eventName, 
+      trackingId, 
+      courseType,
+      receiptUrl
+    });
 
-    if (!name || !email || !whatsapp) {
-      return new Response('Missing required fields', { 
+    // Validações
+    if (!name) {
+      return new Response(JSON.stringify({ error: 'Nome é obrigatório' }), {
         status: 400,
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    let finalCourseId = course_id;
+    if (!whatsapp) {
+      return new Response(JSON.stringify({ error: 'WhatsApp é obrigatório' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    // Se course_name foi fornecido e não há course_id, buscar o curso pelo nome
-    if (course_name && !course_id) {
-      console.log('Buscando curso pelo nome:', course_name);
-      
-      const { data: course, error: courseError } = await supabase
-        .from('courses')
+    // Buscar evento pelo nome
+    let eventId = null;
+    if (eventName) {
+      console.log('Buscando evento:', eventName);
+      const { data: event, error: eventError } = await supabase
+        .from('events')
         .select('id')
-        .ilike('name', course_name)
+        .eq('name', eventName)
         .single();
 
-      if (courseError) {
-        console.log('Erro ao buscar curso:', courseError);
-        return new Response(`Course not found: ${course_name}`, { 
-          status: 400,
-          headers: corsHeaders 
-        });
-      }
-
-      if (course) {
-        finalCourseId = course.id;
-        console.log('Curso encontrado:', course);
+      if (eventError) {
+        console.error('Erro ao buscar evento:', eventError);
+      } else if (event) {
+        eventId = event.id;
+        console.log('Evento encontrado:', eventId);
       }
     }
 
-    // Buscar status padrão "pendente"
-    let defaultStatusId = null;
-    const { data: pendingStatus } = await supabase
-      .from('lead_statuses')
-      .select('id')
-      .ilike('name', 'pendente')
-      .limit(1);
-    
-    if (pendingStatus && pendingStatus.length > 0) {
-      defaultStatusId = pendingStatus[0].id;
-      console.log('Status pendente encontrado:', defaultStatusId);
-    }
-
+    // Buscar scan session pelo tracking_id se fornecido
     let scanSessionId = null;
-    let eventId = null;
-
-    // Se há tracking_id, buscar a sessão de scan correspondente
-    if (tracking_id) {
-      console.log('Buscando QR Code pelo tracking_id:', tracking_id);
+    if (trackingId) {
+      console.log('Buscando scan session pelo tracking:', trackingId);
       
-      // Buscar QR Code pelo tracking_id
+      // Primeiro buscar o QR code pelo tracking_id
       const { data: qrCode, error: qrError } = await supabase
         .from('qr_codes')
-        .select('id, event_id')
-        .eq('tracking_id', tracking_id)
+        .select('id')
+        .eq('tracking_id', trackingId)
         .single();
 
-      if (qrError) {
-        console.log('Erro ao buscar QR Code:', qrError);
-      } else if (qrCode) {
-        console.log('QR Code encontrado:', qrCode);
-        eventId = qrCode.event_id;
-
-        // Buscar a sessão de scan mais recente para este QR Code
+      if (!qrError && qrCode) {
+        console.log('QR code encontrado:', qrCode.id);
+        
+        // Buscar scan session pelo qr_code_id
         const { data: scanSession, error: sessionError } = await supabase
           .from('scan_sessions')
           .select('id')
           .eq('qr_code_id', qrCode.id)
-          .is('lead_id', null) // Sessão ainda não convertida
+          .is('lead_id', null)
           .order('scanned_at', { ascending: false })
           .limit(1)
           .single();
 
-        if (sessionError) {
-          console.log('Erro ao buscar sessão de scan:', sessionError);
-        } else if (scanSession) {
-          console.log('Sessão de scan encontrada:', scanSession);
+        if (!sessionError && scanSession) {
           scanSessionId = scanSession.id;
+          console.log('Scan session encontrada:', scanSessionId);
         }
       }
     }
 
-    // Criar o lead com status padrão
+    // Criar lead
+    const leadData: any = {
+      name,
+      whatsapp,
+      event_id: eventId,
+      scan_session_id: scanSessionId
+    };
+
+    // Adicionar campos opcionais
+    if (email) leadData.email = email;
+    if (courseId) leadData.course_id = courseId;
+    if (postgraduateCourseId) leadData.postgraduate_course_id = postgraduateCourseId;
+    if (courseType) leadData.course_type = courseType;
+    if (receiptUrl) leadData.receipt_url = receiptUrl;
+
+    console.log('Criando lead com dados:', leadData);
+
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .insert([{
-        name,
-        email,
-        whatsapp,
-        course_id: finalCourseId,
-        shift,
-        event_id: eventId,
-        scan_session_id: scanSessionId,
-        status_id: defaultStatusId // Adicionar status padrão
-      }])
+      .insert([leadData])
       .select()
       .single();
 
     if (leadError) {
       console.error('Erro ao criar lead:', leadError);
-      return new Response('Error creating lead', { 
+      return new Response(JSON.stringify({ error: 'Erro ao salvar lead' }), {
         status: 500,
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    console.log('Lead criado:', lead);
+    console.log('Lead criado com sucesso:', lead.id);
 
-    // Se houve scan session, atualizar com o lead_id e marcar como convertida
+    // Atualizar scan session se existir
     if (scanSessionId) {
+      console.log('Atualizando scan session:', scanSessionId);
       const { error: updateError } = await supabase
         .from('scan_sessions')
         .update({ 
@@ -153,29 +162,26 @@ serve(async (req) => {
         .eq('id', scanSessionId);
 
       if (updateError) {
-        console.log('Erro ao atualizar sessão de scan:', updateError);
+        console.error('Erro ao atualizar scan session:', updateError);
       } else {
-        console.log('Sessão de scan atualizada com sucesso');
+        console.log('Scan session atualizada com sucesso');
       }
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
-      lead_id: lead.id,
-      course_id: finalCourseId,
-      tracking_id,
-      session_linked: !!scanSessionId,
-      default_status: defaultStatusId
+      leadId: lead.id,
+      message: 'Lead criado com sucesso!' 
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Erro no endpoint:', error);
-    return new Response('Internal Server Error', { 
+    console.error('Erro na função lead-capture:', error);
+    return new Response(JSON.stringify({ error: 'Erro interno do servidor' }), {
       status: 500,
-      headers: corsHeaders 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

@@ -7,13 +7,13 @@ import { Eye, Users, Target, TrendingUp } from 'lucide-react';
 import { useScanSessions, useConversionMetrics } from '@/hooks/useMetrics';
 
 const SessionMetrics = () => {
-  const { data: sessions = [] } = useScanSessions();
-  const { data: metrics } = useConversionMetrics();
+  const { data: sessions = [], isLoading: sessionsLoading } = useScanSessions();
+  const { data: metrics, isLoading: metricsLoading } = useConversionMetrics();
 
-  console.log('Sessions no componente:', sessions);
-  console.log('Metrics no componente:', metrics);
+  console.log('SessionMetrics - Sessions:', sessions);
+  console.log('SessionMetrics - Metrics:', metrics);
 
-  if (!metrics) {
+  if (sessionsLoading || metricsLoading || !metrics) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
@@ -73,13 +73,13 @@ const SessionMetrics = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rastreamento</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.sessionTrackingRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{metrics.totalLeads}</div>
             <p className="text-xs text-muted-foreground">
-              Leads com sessão
+              Leads capturados
             </p>
           </CardContent>
         </Card>
@@ -139,7 +139,7 @@ const SessionMetrics = () => {
                     )}
                   </TableCell>
                   <TableCell className="text-xs font-mono">
-                    {session.ip_address}
+                    {session.ip_address || 'N/A'}
                   </TableCell>
                 </TableRow>
               ))}

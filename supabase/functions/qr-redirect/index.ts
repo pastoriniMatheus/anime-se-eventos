@@ -14,18 +14,14 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Requisição recebida:', req.url);
+    console.log('QR redirect request:', req.url);
     
-    // Criar cliente Supabase usando as variáveis de ambiente
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    console.log('Supabase URL:', supabaseUrl);
-    console.log('Service Key presente:', !!supabaseServiceKey);
-    
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Variáveis de ambiente não encontradas');
-      return new Response('Configuração do servidor inválida', { 
+      console.error('Missing Supabase environment variables');
+      return new Response('Server configuration error', { 
         status: 500,
         headers: corsHeaders 
       });
@@ -33,67 +29,55 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extrair short_url da URL
+    // Extract short_url from URL
     const url = new URL(req.url);
     const shortUrl = url.pathname.split('/').pop();
     
-    console.log('Short URL extraída:', shortUrl);
+    console.log('Short URL:', shortUrl);
 
     if (!shortUrl) {
-      return new Response('Short URL não fornecida', { 
+      return new Response('Short URL not provided', { 
         status: 400,
         headers: corsHeaders 
       });
     }
 
-    // Buscar QR code pelo short_url
-    console.log('Buscando QR code:', shortUrl);
+    // Find QR code by short_url
     const { data: qrCode, error } = await supabase
       .from('qr_codes')
       .select('*, event:events(name, whatsapp_number)')
       .eq('short_url', shortUrl)
       .single();
 
-    if (error) {
-      console.error('Erro ao buscar QR code:', error);
-      return new Response('QR code não encontrado', { 
+    if (error || !qrCode) {
+      console.error('QR code not found:', error);
+      return new Response('QR code not found', { 
         status: 404,
         headers: corsHeaders 
       });
     }
 
-    if (!qrCode) {
-      console.log('QR code não encontrado para short_url:', shortUrl);
-      return new Response('QR code não encontrado', { 
-        status: 404,
-        headers: corsHeaders 
-      });
-    }
+    console.log('QR code found:', qrCode.id);
 
-    console.log('QR code encontrado:', qrCode);
-
-    // Incrementar contador de scans no QR code PRIMEIRO
+    // Increment scan counter (most important - do this first)
     const newScanCount = (qrCode.scans || 0) + 1;
     const { error: updateError } = await supabase
       .from('qr_codes')
-      .update({ 
-        scans: newScanCount
-      })
+      .update({ scans: newScanCount })
       .eq('id', qrCode.id);
 
     if (updateError) {
-      console.error('Erro ao atualizar contador de scans:', updateError);
+      console.error('Error updating scan count:', updateError);
     } else {
-      console.log('Contador de scans atualizado para:', newScanCount);
+      console.log('Scan count updated to:', newScanCount);
     }
 
-    // Registrar scan session
+    // Register scan session
     const userAgent = req.headers.get('user-agent') || '';
     const ipAddress = req.headers.get('x-forwarded-for') || 
                      req.headers.get('x-real-ip') || 
                      req.headers.get('cf-connecting-ip') || '';
 
-    console.log('Registrando scan session para QR code:', qrCode.id);
     const { data: scanSession, error: sessionError } = await supabase
       .from('scan_sessions')
       .insert({
@@ -107,23 +91,23 @@ serve(async (req) => {
       .single();
 
     if (sessionError) {
-      console.error('Erro ao registrar scan session:', sessionError);
+      console.error('Error registering scan session:', sessionError);
     } else {
-      console.log('Scan session registrada com sucesso:', scanSession);
+      console.log('Scan session registered:', scanSession.id);
     }
 
-    // Determinar URL de redirecionamento
+    // Determine redirect URL
     let redirectUrl = qrCode.original_url;
     
     if (!redirectUrl) {
-      console.error('URL de redirecionamento não encontrada no QR code');
-      return new Response('URL de redirecionamento não configurada', { 
+      console.error('No redirect URL found');
+      return new Response('Redirect URL not configured', { 
         status: 500,
         headers: corsHeaders 
       });
     }
 
-    console.log('Redirecionando para:', redirectUrl);
+    console.log('Redirecting to:', redirectUrl);
     return new Response(null, {
       status: 302,
       headers: {
@@ -133,8 +117,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Erro na função qr-redirect:', error);
-    return new Response('Erro interno do servidor', { 
+    console.error('Error in qr-redirect function:', error);
+    return new Response('Internal server error', { 
       status: 500,
       headers: corsHeaders 
     });
