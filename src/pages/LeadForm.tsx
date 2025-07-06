@@ -2,20 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCourses } from '@/hooks/useCourses';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useFormSettings } from '@/hooks/useFormSettings';
 import { useNomenclature } from '@/hooks/useNomenclature';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
-import { supabase } from '@/integrations/supabase/client';
+import { useLeadSubmission } from '@/hooks/useLeadSubmission';
 import { useToast } from '@/hooks/use-toast';
-import { User, Phone, Mail, BookOpen, Calendar, GraduationCap } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Calendar } from 'lucide-react';
+import PersonalInfoStep from '@/components/forms/PersonalInfoStep';
+import AcademicInterestStep from '@/components/forms/AcademicInterestStep';
+import FormProgress from '@/components/forms/FormProgress';
 import PaymentScreen from '@/components/PaymentScreen';
 
 const LeadForm = () => {
@@ -28,7 +28,6 @@ const LeadForm = () => {
     eventId: '',
     courseType: 'course'
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [qrCodeData, setQrCodeData] = useState<any>(null);
@@ -40,6 +39,7 @@ const LeadForm = () => {
   const { data: settingsArray = [] } = useFormSettings();
   const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
+  const { submitLead, isLoading } = useLeadSubmission();
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,12 +48,13 @@ const LeadForm = () => {
   const settings = React.useMemo(() => {
     const settingsObj: Record<string, any> = {};
     settingsArray.forEach(setting => {
-      const key = setting.key.replace('form_', ''); // Remove 'form_' prefix for easier access
+      const key = setting.key.replace('form_', '');
       settingsObj[key] = setting.value;
     });
     return settingsObj;
   }, [settingsArray]);
 
+  // Apply dynamic styles
   useEffect(() => {
     if (settings.primary_color || settings.secondary_color || settings.button_color || 
         settings.background_color || settings.text_color || settings.field_background_color || 
@@ -102,6 +103,7 @@ const LeadForm = () => {
     }
   }, [settings]);
 
+  // Handle QR code tracking
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const trackingId = searchParams.get('t') || searchParams.get('tracking');
@@ -109,8 +111,7 @@ const LeadForm = () => {
     if (trackingId) {
       const fetchQRCodeData = async () => {
         try {
-          // Increment scan count
-          await supabase.rpc('increment_qr_scan', { tracking_id: trackingId });
+          console.log('Buscando dados do QR code:', trackingId);
           
           const { data: qrCode, error } = await supabase
             .from('qr_codes')
@@ -124,29 +125,12 @@ const LeadForm = () => {
           }
 
           if (qrCode) {
+            console.log('QR code encontrado:', qrCode);
             setQrCodeData(qrCode);
             setFormData(prev => ({
               ...prev,
               eventId: qrCode.event_id || ''
             }));
-
-            // Criar scan session
-            const { data: session, error: sessionError } = await supabase
-              .from('scan_sessions')
-              .insert({
-                qr_code_id: qrCode.id,
-                event_id: qrCode.event_id,
-                user_agent: navigator.userAgent,
-                ip_address: ''
-              })
-              .select()
-              .single();
-
-            if (sessionError) {
-              console.error('Erro ao criar scan session:', sessionError);
-            } else if (session) {
-              setScanSessionId(session.id);
-            }
           }
         } catch (error) {
           console.error('Erro na busca do QR code:', error);
@@ -156,6 +140,14 @@ const LeadForm = () => {
       fetchQRCodeData();
     }
   }, [location.search]);
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    if (field === 'whatsapp' && validationResult) {
+      setValidationResult(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,7 +161,7 @@ const LeadForm = () => {
       return;
     }
 
-    // Check if WhatsApp validation is enabled
+    // Validação do WhatsApp se habilitada
     const whatsappValidationEnabled = settingsArray.find(s => s.key === 'whatsapp_validation_enabled')?.value === 'true';
     
     if (whatsappValidationEnabled && validationResult !== 'valid') {
@@ -177,60 +169,20 @@ const LeadForm = () => {
       if (!isValid) return;
     }
 
-    setIsLoading(true);
-
     try {
-      const leadData = {
-        name: formData.name,
-        whatsapp: formData.whatsapp,
-        email: formData.email,
-        event_id: formData.eventId || null,
-        course_id: formData.courseType === 'course' ? formData.courseId || null : null,
-        postgraduate_course_id: formData.courseType === 'postgraduate' ? formData.courseId || null : null,
-        course_type: formData.courseType,
-        scan_session_id: scanSessionId,
-        source: qrCodeData ? 'qr_code' : 'form'
-      };
-
-      const { data: lead, error } = await supabase
-        .from('leads')
-        .insert([leadData])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (scanSessionId && lead) {
-        await supabase
-          .from('scan_sessions')
-          .update({
-            converted: true,
-            converted_at: new Date().toISOString(),
-            lead_id: lead.id
-          })
-          .eq('id', scanSessionId);
+      const newLeadId = await submitLead(formData, scanSessionId, qrCodeData);
+      
+      // Verificar se deve mostrar tela de pagamento
+      const paymentEnabled = settings.payment_value && settings.pix_key;
+      if (paymentEnabled) {
+        setLeadId(newLeadId);
+        setShowPayment(true);
+      } else {
+        // Redirecionar para página de sucesso ou inicial
+        navigate('/');
       }
-
-      // Store lead ID and show payment screen
-      setLeadId(lead.id);
-      setShowPayment(true);
     } catch (error) {
-      console.error('Erro ao enviar formulário:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao enviar formulário. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    if (field === 'whatsapp' && validationResult) {
-      setValidationResult(null);
+      // Erro já tratado no hook
     }
   };
 
@@ -281,15 +233,11 @@ const LeadForm = () => {
     );
   }
 
-  const stepTitles = [
-    "Dados Pessoais",
-    "Interesse Acadêmico"
-  ];
+  const stepTitles = ["Dados Pessoais", "Interesse Acadêmico"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 lead-form-container">
       <Card className="w-full max-w-2xl shadow-2xl border-0 bg-white/90 backdrop-blur-sm lead-form-card">
-        {/* Banner/Capa do formulário */}
         {settings.banner_image_url && (
           <div className="w-full h-48 overflow-hidden rounded-t-lg">
             <img 
@@ -309,20 +257,11 @@ const LeadForm = () => {
             <p className="text-blue-100 mt-2">{settings.subtitle}</p>
           )}
           
-          {/* Progress Steps */}
-          <div className="flex justify-center mt-4 space-x-4">
-            {[1, 2].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step <= currentStep ? 'bg-white text-blue-600' : 'bg-blue-400 text-white'
-                }`}>
-                  {step}
-                </div>
-                {step < 2 && <div className={`w-8 h-0.5 ml-2 ${step < currentStep ? 'bg-white' : 'bg-blue-400'}`} />}
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-blue-100 mt-2">{stepTitles[currentStep - 1]}</p>
+          <FormProgress 
+            currentStep={currentStep} 
+            totalSteps={2} 
+            stepTitles={stepTitles} 
+          />
         </CardHeader>
         
         <CardContent className="p-8">
@@ -336,135 +275,28 @@ const LeadForm = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Etapa 1: Dados Pessoais */}
             {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                    <User className="w-4 h-4" />
-                    Nome completo *
-                  </Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 lead-form-input"
-                    placeholder="Digite seu nome completo"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp" className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                    <Phone className="w-4 h-4" />
-                    WhatsApp *
-                  </Label>
-                  <Input
-                    id="whatsapp"
-                    type="tel"
-                    value={formData.whatsapp}
-                    onChange={(e) => handleChange('whatsapp', e.target.value)}
-                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 lead-form-input"
-                    placeholder="(11) 99999-9999"
-                    required
-                  />
-                  {isValidating && (
-                    <p className="text-sm text-blue-600">Validando número...</p>
-                  )}
-                  {validationResult === 'valid' && (
-                    <p className="text-sm text-green-600">✓ Número validado</p>
-                  )}
-                  {validationResult === 'invalid' && (
-                    <p className="text-sm text-red-600">✗ Número inválido</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                    <Mail className="w-4 h-4" />
-                    E-mail *
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 lead-form-input"
-                    placeholder="seu@email.com"
-                    required
-                  />
-                </div>
-              </div>
+              <PersonalInfoStep
+                formData={formData}
+                onFormDataChange={handleChange}
+                validationResult={validationResult}
+                isValidating={isValidating}
+              />
             )}
 
-            {/* Etapa 2: Interesse Acadêmico */}
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                    <GraduationCap className="w-4 h-4" />
-                    Tipo de Curso
-                  </Label>
-                  <RadioGroup
-                    value={formData.courseType}
-                    onValueChange={(value) => handleChange('courseType', value)}
-                    className="flex flex-col space-y-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="course" id="course" />
-                      <Label htmlFor="course" className="lead-form-label">{courseNomenclature}</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="postgraduate" id="postgraduate" />
-                      <Label htmlFor="postgraduate" className="lead-form-label">{postgraduateNomenclature}</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                    <BookOpen className="w-4 h-4" />
-                    {formData.courseType === 'course' ? courseNomenclature : postgraduateNomenclature}
-                  </Label>
-                  <Select value={formData.courseId} onValueChange={(value) => handleChange('courseId', value)}>
-                    <SelectTrigger className="w-full border-gray-300 focus:border-blue-500 lead-form-input">
-                      <SelectValue placeholder="Selecione um curso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(formData.courseType === 'course' ? courses : postgraduateCourses).map((course) => (
-                        <SelectItem key={course.id} value={course.id}>
-                          {course.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {!qrCodeData && (
-                  <div className="space-y-2">
-                    <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                      <Calendar className="w-4 h-4" />
-                      Evento
-                    </Label>
-                    <Select value={formData.eventId} onValueChange={(value) => handleChange('eventId', value)}>
-                      <SelectTrigger className="w-full border-gray-300 focus:border-blue-500 lead-form-input">
-                        <SelectValue placeholder="Selecione um evento (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {events.map((event) => (
-                          <SelectItem key={event.id} value={event.id}>
-                            {event.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+              <AcademicInterestStep
+                formData={formData}
+                onFormDataChange={handleChange}
+                courses={courses}
+                postgraduateCourses={postgraduateCourses}
+                events={events}
+                courseNomenclature={courseNomenclature}
+                postgraduateNomenclature={postgraduateNomenclature}
+                qrCodeData={qrCodeData}
+              />
             )}
 
-            {/* Navigation Buttons */}
             <div className="flex justify-between pt-6">
               {currentStep > 1 && (
                 <Button 
