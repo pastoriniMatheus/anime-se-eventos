@@ -106,7 +106,7 @@ const Header = () => {
                     onClick={() => navigate(item.path)}
                     className={cn(
                       'flex items-center space-x-2 cursor-pointer',
-                      isActive && 'bg-blue-50 text-blue-600'
+                      isActive && 'bg-primary/10 text-primary'
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -120,7 +120,7 @@ const Header = () => {
 
         <div className="flex items-center space-x-2">
           <span className="text-xs text-gray-600 hidden sm:block">
-            <strong className="text-blue-700">{user?.username}</strong>
+            <strong className="text-primary">{user?.username}</strong>
           </span>
           <Button
             variant="outline"
@@ -166,8 +166,8 @@ const Header = () => {
                 key={item.path}
                 variant={isActive ? 'default' : 'ghost'}
                 className={cn(
-                  'flex items-center space-x-2 h-10 text-gray-700 hover:text-blue-600',
-                  isActive && 'bg-blue-600 text-white hover:bg-blue-700'
+                  'flex items-center space-x-2 h-10 text-gray-700 hover:text-primary',
+                  isActive && 'bg-primary text-primary-foreground hover:bg-primary/90'
                 )}
                 onClick={() => navigate(item.path)}
               >
@@ -181,7 +181,7 @@ const Header = () => {
 
       <div className="flex items-center space-x-4">
         <span className="text-sm text-gray-600">
-          Olá, <strong className="text-blue-700">{user?.username}</strong>
+          Olá, <strong className="text-primary">{user?.username}</strong>
         </span>
         <Button
           variant="outline"

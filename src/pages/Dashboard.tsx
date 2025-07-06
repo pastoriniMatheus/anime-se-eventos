@@ -68,76 +68,76 @@ const Dashboard = () => {
       title: 'Total de Leads',
       value: leads.length.toLocaleString(),
       icon: Users,
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-700'
+      color: 'from-pink-500 to-purple-600',
+      bgColor: 'bg-pink-50',
+      textColor: 'text-pink-700'
     },
     {
       title: 'Leads Graduação',
       value: graduationLeads.toLocaleString(),
       icon: BookOpen,
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'bg-indigo-50',
-      textColor: 'text-indigo-700'
+      color: 'from-purple-500 to-pink-600',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-700'
     },
     {
       title: 'Leads Pós-graduação',
       value: postgraduateLeads.toLocaleString(),
       icon: GraduationCap,
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-700'
+      color: 'from-pink-600 to-purple-700',
+      bgColor: 'bg-pink-50',
+      textColor: 'text-pink-700'
     },
     {
       title: 'Leads Hoje',
       value: todayLeads.toLocaleString(),
       icon: UserPlus,
-      color: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-50',
-      textColor: 'text-green-700'
+      color: 'from-purple-600 to-pink-500',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-700'
     },
     {
       title: 'QR Codes Ativos',
       value: qrCodes.length.toLocaleString(),
       icon: QrCode,
-      color: 'from-orange-500 to-orange-600',
-      bgColor: 'bg-orange-50',
-      textColor: 'text-orange-700'
+      color: 'from-pink-500 to-purple-500',
+      bgColor: 'bg-pink-50',
+      textColor: 'text-pink-700'
     },
     {
       title: 'Total de Scans',
       value: totalScans.toLocaleString(),
       icon: Eye,
-      color: 'from-cyan-500 to-cyan-600',
-      bgColor: 'bg-cyan-50',
-      textColor: 'text-cyan-700'
+      color: 'from-purple-500 to-pink-500',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-700'
     },
     {
       title: 'Eventos Ativos',
       value: events.length.toLocaleString(),
       icon: Calendar,
-      color: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50',
-      textColor: 'text-emerald-700'
+      color: 'from-pink-600 to-purple-600',
+      bgColor: 'bg-pink-50',
+      textColor: 'text-pink-700'
     },
     {
       title: 'Taxa de Conversão',
       value: `${conversionRate}%`,
       icon: Target,
-      color: 'from-rose-500 to-rose-600',
-      bgColor: 'bg-rose-50',
-      textColor: 'text-rose-700'
+      color: 'from-purple-600 to-pink-600',
+      bgColor: 'bg-purple-50',
+      textColor: 'text-purple-700'
     }
   ];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 ${isMobile ? 'p-2' : 'p-6'}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 ${isMobile ? 'p-2' : 'p-6'}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className={`flex ${isMobile ? 'flex-col space-y-4' : 'items-center justify-between'}`}>
             <div>
-              <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-blue-800 to-purple-700 bg-clip-text text-transparent mb-2`}>
+              <h1 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold bg-gradient-to-r from-pink-600 to-purple-700 bg-clip-text text-transparent mb-2`}>
                 Dashboard Executivo
               </h1>
               <p className={`text-gray-600 ${isMobile ? 'text-sm' : ''}`}>Visão geral do seu sistema de captação de leads</p>
@@ -184,7 +184,7 @@ const Dashboard = () => {
           {/* Leads by Event */}
           {visibility.leadsByEvent && (
             <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <Calendar className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   <span>Leads por Evento</span>
@@ -199,7 +199,7 @@ const Dashboard = () => {
           {/* Leads by Course */}
           {visibility.leadsByCourse && (
             <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-t-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <Users className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   <span>Leads por Curso</span>
@@ -216,7 +216,7 @@ const Dashboard = () => {
         {visibility.rankings && (
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'} gap-6 mb-8`}>
             <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-pink-600 to-purple-500 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <TrendingUp className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   <span>Cursos Mais Procurados</span>
@@ -228,7 +228,7 @@ const Dashboard = () => {
             </Card>
 
             <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-t-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <Target className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   <span>Eventos com Mais Capturas</span>
@@ -245,7 +245,7 @@ const Dashboard = () => {
         {visibility.conversion && (
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2'} gap-6 mb-8`}>
             <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <TrendingUp className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   <span>Métricas de Conversão</span>
@@ -257,7 +257,7 @@ const Dashboard = () => {
             </Card>
 
             <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-t-lg">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-t-lg">
                 <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
                   <Activity className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
                   <span>Métricas de Sessão</span>
@@ -272,7 +272,7 @@ const Dashboard = () => {
 
         {/* Enrollment Metrics */}
         <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
-          <CardHeader className="border-b bg-gradient-to-r from-green-500 to-green-600 text-white rounded-t-lg">
+          <CardHeader className="border-b bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-t-lg">
             <CardTitle className={`flex items-center space-x-2 ${isMobile ? 'text-base' : ''}`}>
               <Users className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
               <span>Métricas de Matrícula</span>
