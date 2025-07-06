@@ -53,14 +53,15 @@ export const useConversionMetrics = () => {
 
         const sessionsData = sessions || [];
         const qrCodesData = qrCodes || [];
+        const leadsData = leads || [];
         
-        // Calcular total de scans a partir dos QR codes (agora com a coluna correta)
+        // Calcular total de scans corretamente a partir dos QR codes
         const totalScansFromQR = qrCodesData.reduce((sum, qr) => sum + (qr.scans || 0), 0);
         
-        // Usar o maior valor entre sessões registradas e contador dos QR codes
-        const totalScans = Math.max(sessionsData.length, totalScansFromQR);
+        // Usar o total de scans dos QR codes como referência principal
+        const totalScans = totalScansFromQR;
         
-        const totalLeads = leads?.length || 0;
+        const totalLeads = leadsData.length;
         const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
         const totalQRCodes = qrCodesData.length;
 

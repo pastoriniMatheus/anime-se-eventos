@@ -14,7 +14,7 @@ import { useNomenclature } from '@/hooks/useNomenclature';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Phone, Mail, BookOpen, Calendar, Clock, GraduationCap } from 'lucide-react';
+import { User, Phone, Mail, BookOpen, Calendar, GraduationCap } from 'lucide-react';
 import ThankYouScreen from '@/components/ThankYouScreen';
 
 const LeadForm = () => {
@@ -25,7 +25,6 @@ const LeadForm = () => {
     email: '',
     courseId: '',
     eventId: '',
-    shift: '',
     courseType: 'course'
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -188,7 +187,6 @@ const LeadForm = () => {
         course_id: formData.courseType === 'course' ? formData.courseId || null : null,
         postgraduate_course_id: formData.courseType === 'postgraduate' ? formData.courseId || null : null,
         course_type: formData.courseType,
-        shift: formData.shift || null,
         scan_session_id: scanSessionId,
         source: qrCodeData ? 'qr_code' : 'form'
       };
@@ -243,7 +241,7 @@ const LeadForm = () => {
       });
       return;
     }
-    setCurrentStep(prev => Math.min(prev + 1, 2)); // Removido o step 3 (resumo)
+    setCurrentStep(prev => Math.min(prev + 1, 2));
   };
 
   const prevStep = () => {
@@ -420,25 +418,6 @@ const LeadForm = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {formData.courseType === 'course' && (
-                  <div className="space-y-2">
-                    <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
-                      <Clock className="w-4 h-4" />
-                      Turno de Preferência
-                    </Label>
-                    <Select value={formData.shift} onValueChange={(value) => handleChange('shift', value)}>
-                      <SelectTrigger className="w-full border-gray-300 focus:border-blue-500 lead-form-input">
-                        <SelectValue placeholder="Selecione um turno (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manhã">Manhã</SelectItem>
-                        <SelectItem value="tarde">Tarde</SelectItem>
-                        <SelectItem value="noite">Noite</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
 
                 {!qrCodeData && (
                   <div className="space-y-2">
