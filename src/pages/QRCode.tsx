@@ -107,11 +107,12 @@ const QRCodePage = () => {
         trackingId
       });
 
-      // Criar o QR code
+      // Criar o QR code - CORRIGIDO para incluir full_url
       const qrCodeData: any = {
         event_id: event.id,
         short_url: shortUrl,
-        original_url: waLink,  // A URL final (WhatsApp ou formulário)
+        full_url: waLink,        // Adicionar full_url (campo obrigatório)
+        original_url: waLink,    // A URL final (WhatsApp ou formulário)
         tracking_id: trackingId,
         type: newQRCode.type
       };
@@ -142,7 +143,6 @@ const QRCodePage = () => {
     }
   };
 
-  // Função melhorada para deletar QR code E o evento associado
   const handleDeleteQRCode = async (qrCodeId: string) => {
     try {
       console.log('Iniciando exclusão do QR Code:', qrCodeId);
