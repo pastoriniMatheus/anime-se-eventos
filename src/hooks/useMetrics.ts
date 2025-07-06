@@ -7,7 +7,7 @@ export const useScanSessions = () => {
     queryKey: ['scan_sessions'],
     queryFn: async () => {
       try {
-        // Usar a função RPC para buscar sessões com dados relacionados
+        // Usar a função RPC corrigida para buscar sessões com dados relacionados
         const { data, error } = await (supabase as any).rpc('get_scan_sessions');
         
         if (error) {
@@ -16,6 +16,7 @@ export const useScanSessions = () => {
         }
         
         console.log('Sessões de scan encontradas:', data?.length || 0);
+        console.log('Dados das sessões:', data);
         return data || [];
       } catch (error) {
         console.error('Error fetching scan sessions:', error);
@@ -37,14 +38,14 @@ export const useConversionMetrics = () => {
         
         if (leadsError) throw leadsError;
 
-        // Buscar todas as sessões de scan
+        // Buscar todas as sessões de scan diretamente da tabela
         const { data: sessions, error: sessionsError } = await supabase
           .from('scan_sessions')
           .select('*');
         
         if (sessionsError) throw sessionsError;
 
-        // Buscar dados de QR codes com contadores de scan atualizados
+        // Buscar dados de QR codes com contadores de scan
         const { data: qrCodes, error: qrError } = await supabase
           .from('qr_codes')
           .select('id, scans, type');
@@ -55,11 +56,14 @@ export const useConversionMetrics = () => {
         const qrCodesData = qrCodes || [];
         const leadsData = leads || [];
         
-        // Calcular total de scans corretamente a partir dos QR codes
+        // Calcular total de scans a partir das sessões registradas
+        const totalScansFromSessions = sessionsData.length;
+        
+        // Usar também o contador dos QR codes como referência
         const totalScansFromQR = qrCodesData.reduce((sum, qr) => sum + (qr.scans || 0), 0);
         
-        // Usar o total de scans dos QR codes como referência principal
-        const totalScans = totalScansFromQR;
+        // Usar o maior valor entre sessões registradas e contador dos QR codes
+        const totalScans = Math.max(totalScansFromSessions, totalScansFromQR);
         
         const totalLeads = leadsData.length;
         const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
@@ -67,6 +71,7 @@ export const useConversionMetrics = () => {
 
         console.log('Métricas calculadas:', {
           totalScans,
+          totalScansFromSessions,
           totalScansFromQR,
           sessionsCount: sessionsData.length,
           totalLeads,

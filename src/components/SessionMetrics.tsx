@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,9 @@ import { useScanSessions, useConversionMetrics } from '@/hooks/useMetrics';
 const SessionMetrics = () => {
   const { data: sessions = [] } = useScanSessions();
   const { data: metrics } = useConversionMetrics();
+
+  console.log('Sessions no componente:', sessions);
+  console.log('Metrics no componente:', metrics);
 
   if (!metrics) {
     return (
@@ -36,7 +40,7 @@ const SessionMetrics = () => {
           <CardContent>
             <div className="text-2xl font-bold">{metrics.totalScans}</div>
             <p className="text-xs text-muted-foreground">
-              Sessões rastreadas
+              Sessões registradas: {sessions.length}
             </p>
           </CardContent>
         </Card>
@@ -96,6 +100,7 @@ const SessionMetrics = () => {
                 <TableHead>Data/Hora</TableHead>
                 <TableHead>Evento</TableHead>
                 <TableHead>QR Code</TableHead>
+                <TableHead>Scans</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Lead</TableHead>
                 <TableHead>IP</TableHead>
@@ -110,8 +115,13 @@ const SessionMetrics = () => {
                   <TableCell>{session.event?.name || 'N/A'}</TableCell>
                   <TableCell>
                     <code className="text-xs bg-muted px-2 py-1 rounded">
-                      {session.qr_code?.short_url}
+                      {session.qr_code?.short_url || 'N/A'}
                     </code>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {session.qr_code?.scans || 0}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={session.lead_id ? "default" : "secondary"}>
