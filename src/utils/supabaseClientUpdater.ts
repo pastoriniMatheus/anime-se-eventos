@@ -9,11 +9,12 @@ export const saveSupabaseConfig = (config: DatabaseConfig): void => {
       url: config.supabaseUrl,
       serviceKey: config.supabaseServiceKey,
       anonKey: config.supabaseAnonKey || '',
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
+      domain: window.location.origin
     };
     
     localStorage.setItem('supabase-config', JSON.stringify(configToSave));
-    console.log('[Config] Configurações do Supabase salvas no localStorage');
+    console.log('[Config] Configurações do Supabase salvas para domínio:', window.location.origin);
   }
 };
 
@@ -23,6 +24,12 @@ export const loadSupabaseConfig = (): DatabaseConfig | null => {
     const saved = localStorage.getItem('supabase-config');
     if (saved) {
       const config = JSON.parse(saved);
+      console.log('[Config] Configuração carregada:', {
+        url: config.url,
+        domain: config.domain,
+        currentDomain: window.location.origin
+      });
+      
       return {
         type: 'supabase',
         supabaseUrl: config.url,
@@ -46,7 +53,7 @@ export const updateSupabaseClient = (config: DatabaseConfig): boolean => {
       // Salvar no window para acesso global (se necessário)
       (window as any).customSupabaseClient = newClient;
       
-      console.log('[Config] Cliente Supabase atualizado com sucesso');
+      console.log('[Config] Cliente Supabase atualizado para domínio:', window.location.origin);
       
       // Forçar recriação do cliente principal
       setTimeout(() => {
@@ -78,12 +85,27 @@ export const getCurrentSupabaseClient = () => {
   const savedConfig = loadSupabaseConfig();
   
   if (savedConfig && savedConfig.supabaseUrl && savedConfig.supabaseAnonKey) {
+    console.log('[Config] Usando configuração salva:', savedConfig.supabaseUrl);
     return createClient(savedConfig.supabaseUrl, savedConfig.supabaseAnonKey);
   }
   
-  // Fallback para cliente padrão
-  const SUPABASE_URL = "https://dobtquebpcnzjisftcfh.supabase.co";
-  const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0";
+  // Fallback para cliente padrão baseado no domínio atual
+  console.log('[Config] Usando configuração padrão para domínio:', window.location.origin);
   
-  return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  // Detectar automaticamente a configuração baseada no domínio
+  if (window.location.origin.includes('lovableproject.com')) {
+    // Configuração para Lovable
+    const SUPABASE_URL = "https://iznfrkdsmbtynmifqcdd.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6bmZya2RzbWJ0eW5taWZxY2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzIzOTAsImV4cCI6MjA2NzMwODM5MH0.8Rqh2hxan513BDqxDSYM_sy8O-hEPlAb9OLL166BzIQ";
+    
+    console.log('[Config] Usando configuração Lovable');
+    return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  } else {
+    // Configuração alternativa para outros domínios
+    const SUPABASE_URL = "https://dobtquebpcnzjisftcfh.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3UiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0";
+    
+    console.log('[Config] Usando configuração alternativa');
+    return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  }
 };
