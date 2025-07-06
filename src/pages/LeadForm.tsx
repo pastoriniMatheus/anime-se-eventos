@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { useCourses } from '@/hooks/useCourses';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useFormSettings } from '@/hooks/useFormSettings';
+import { useNomenclature } from '@/hooks/useNomenclature';
 import { useWhatsAppValidation } from '@/hooks/useWhatsAppValidation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +19,7 @@ import { User, Phone, Mail, BookOpen, Calendar, Clock, GraduationCap } from 'luc
 import ThankYouScreen from '@/components/ThankYouScreen';
 
 const LeadForm = () => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     whatsapp: '',
@@ -35,6 +38,7 @@ const LeadForm = () => {
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const { data: events = [] } = useEvents();
   const { data: settingsArray = [] } = useFormSettings();
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
   const { validateWhatsApp, isValidating, validationResult, setValidationResult } = useWhatsAppValidation();
   const { toast } = useToast();
   const location = useLocation();
@@ -50,9 +54,58 @@ const LeadForm = () => {
     return settingsObj;
   }, [settingsArray]);
 
+  // Aplicar cores personalizadas via CSS
+  useEffect(() => {
+    if (settings.primary_color || settings.secondary_color || settings.button_color || 
+        settings.background_color || settings.text_color || settings.field_background_color || 
+        settings.field_border_color) {
+      
+      const style = document.createElement('style');
+      style.id = 'dynamic-form-styles';
+      
+      const css = `
+        .lead-form-container {
+          background: ${settings.background_color || '#ffffff'} !important;
+          color: ${settings.text_color || '#1f2937'} !important;
+        }
+        .lead-form-card {
+          background: ${settings.background_color || '#ffffff'} !important;
+          color: ${settings.text_color || '#1f2937'} !important;
+        }
+        .lead-form-header {
+          background: linear-gradient(135deg, ${settings.primary_color || '#3b82f6'}, ${settings.secondary_color || '#f59e0b'}) !important;
+        }
+        .lead-form-input {
+          background: ${settings.field_background_color || '#f9fafb'} !important;
+          border-color: ${settings.field_border_color || '#d1d5db'} !important;
+          color: ${settings.text_color || '#1f2937'} !important;
+        }
+        .lead-form-button {
+          background: linear-gradient(135deg, ${settings.button_color || '#10b981'}, ${settings.primary_color || '#3b82f6'}) !important;
+        }
+        .lead-form-step-button {
+          background: ${settings.primary_color || '#3b82f6'} !important;
+        }
+        .lead-form-label {
+          color: ${settings.text_color || '#1f2937'} !important;
+        }
+      `;
+      
+      style.textContent = css;
+      document.head.appendChild(style);
+      
+      return () => {
+        const existingStyle = document.getElementById('dynamic-form-styles');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+      };
+    }
+  }, [settings]);
+
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-    const trackingId = searchParams.get('t');
+    const trackingId = searchParams.get('t') || searchParams.get('tracking');
 
     if (trackingId) {
       const fetchQRCodeData = async () => {
@@ -74,18 +127,6 @@ const LeadForm = () => {
               ...prev,
               eventId: qrCode.event_id || ''
             }));
-
-            // Incrementar contador e criar scan session sem o campo scans
-            const { error: updateError } = await supabase
-              .from('qr_codes')
-              .update({ 
-                // Remover tentativa de incrementar o campo scans que não existe
-              })
-              .eq('id', qrCode.id);
-
-            if (updateError) {
-              console.error('Erro ao atualizar QR code:', updateError);
-            }
 
             // Criar scan session
             const { data: session, error: sessionError } = await supabase
@@ -190,6 +231,22 @@ const LeadForm = () => {
     }
   };
 
+  const nextStep = () => {
+    if (currentStep === 1 && (!formData.name || !formData.whatsapp || !formData.email)) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios antes de continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCurrentStep(prev => Math.min(prev + 1, 3));
+  };
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+
   if (showThankYou) {
     return (
       <ThankYouScreen 
@@ -201,10 +258,16 @@ const LeadForm = () => {
     );
   }
 
+  const stepTitles = [
+    "Dados Pessoais",
+    "Interesse Acadêmico", 
+    "Finalização"
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-        <CardHeader className="text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 lead-form-container">
+      <Card className="w-full max-w-2xl shadow-2xl border-0 bg-white/90 backdrop-blur-sm lead-form-card">
+        <CardHeader className="text-center lead-form-header text-white rounded-t-lg">
           <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
             <User className="w-6 h-6" />
             {settings.title || 'Cadastro de Lead'}
@@ -212,6 +275,21 @@ const LeadForm = () => {
           {settings.subtitle && (
             <p className="text-blue-100 mt-2">{settings.subtitle}</p>
           )}
+          
+          {/* Progress Steps */}
+          <div className="flex justify-center mt-4 space-x-4">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  step <= currentStep ? 'bg-white text-blue-600' : 'bg-blue-400 text-white'
+                }`}>
+                  {step}
+                </div>
+                {step < 3 && <div className={`w-8 h-0.5 ml-2 ${step < currentStep ? 'bg-white' : 'bg-blue-400'}`} />}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-blue-100 mt-2">{stepTitles[currentStep - 1]}</p>
         </CardHeader>
         
         <CardContent className="p-8">
@@ -225,150 +303,210 @@ const LeadForm = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-gray-700 font-medium flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Nome completo *
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Digite seu nome completo"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp" className="text-gray-700 font-medium flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                WhatsApp *
-              </Label>
-              <Input
-                id="whatsapp"
-                type="tel"
-                value={formData.whatsapp}
-                onChange={(e) => handleChange('whatsapp', e.target.value)}
-                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                placeholder="(11) 99999-9999"
-                required
-              />
-              {isValidating && (
-                <p className="text-sm text-blue-600">Validando número...</p>
-              )}
-              {validationResult === 'valid' && (
-                <p className="text-sm text-green-600">✓ Número validado</p>
-              )}
-              {validationResult === 'invalid' && (
-                <p className="text-sm text-red-600">✗ Número inválido</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700 font-medium flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                E-mail *
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-gray-700 font-medium flex items-center gap-2">
-                <GraduationCap className="w-4 h-4" />
-                Tipo de Curso
-              </Label>
-              <RadioGroup
-                value={formData.courseType}
-                onValueChange={(value) => handleChange('courseType', value)}
-                className="flex flex-col space-y-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="course" id="course" />
-                  <Label htmlFor="course">Graduação</Label>
+            {/* Etapa 1: Dados Pessoais */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                    <User className="w-4 h-4" />
+                    Nome completo *
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 lead-form-input"
+                    placeholder="Digite seu nome completo"
+                    required
+                  />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="postgraduate" id="postgraduate" />
-                  <Label htmlFor="postgraduate">Pós-graduação</Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp" className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                    <Phone className="w-4 h-4" />
+                    WhatsApp *
+                  </Label>
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    value={formData.whatsapp}
+                    onChange={(e) => handleChange('whatsapp', e.target.value)}
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 lead-form-input"
+                    placeholder="(11) 99999-9999"
+                    required
+                  />
+                  {isValidating && (
+                    <p className="text-sm text-blue-600">Validando número...</p>
+                  )}
+                  {validationResult === 'valid' && (
+                    <p className="text-sm text-green-600">✓ Número validado</p>
+                  )}
+                  {validationResult === 'invalid' && (
+                    <p className="text-sm text-red-600">✗ Número inválido</p>
+                  )}
                 </div>
-              </RadioGroup>
-            </div>
 
-            <div className="space-y-2">
-              <Label className="text-gray-700 font-medium flex items-center gap-2">
-                <BookOpen className="w-4 h-4" />
-                {formData.courseType === 'course' ? 'Curso de Graduação' : 'Curso de Pós-graduação'}
-              </Label>
-              <Select value={formData.courseId} onValueChange={(value) => handleChange('courseId', value)}>
-                <SelectTrigger className="w-full border-gray-300 focus:border-blue-500">
-                  <SelectValue placeholder="Selecione um curso" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(formData.courseType === 'course' ? courses : postgraduateCourses).map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {!qrCodeData && (
-              <div className="space-y-2">
-                <Label className="text-gray-700 font-medium flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Evento
-                </Label>
-                <Select value={formData.eventId} onValueChange={(value) => handleChange('eventId', value)}>
-                  <SelectTrigger className="w-full border-gray-300 focus:border-blue-500">
-                    <SelectValue placeholder="Selecione um evento (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        {event.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                    <Mail className="w-4 h-4" />
+                    E-mail *
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 lead-form-input"
+                    placeholder="seu@email.com"
+                    required
+                  />
+                </div>
               </div>
             )}
 
-            {formData.courseType === 'course' && (
-              <div className="space-y-2">
-                <Label className="text-gray-700 font-medium flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Turno de Preferência
-                </Label>
-                <Select value={formData.shift} onValueChange={(value) => handleChange('shift', value)}>
-                  <SelectTrigger className="w-full border-gray-300 focus:border-blue-500">
-                    <SelectValue placeholder="Selecione um turno (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manhã">Manhã</SelectItem>
-                    <SelectItem value="tarde">Tarde</SelectItem>
-                    <SelectItem value="noite">Noite</SelectItem>
-                  </SelectContent>
-                </Select>
+            {/* Etapa 2: Interesse Acadêmico */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                    <GraduationCap className="w-4 h-4" />
+                    Tipo de Curso
+                  </Label>
+                  <RadioGroup
+                    value={formData.courseType}
+                    onValueChange={(value) => handleChange('courseType', value)}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="course" id="course" />
+                      <Label htmlFor="course" className="lead-form-label">{courseNomenclature}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="postgraduate" id="postgraduate" />
+                      <Label htmlFor="postgraduate" className="lead-form-label">{postgraduateNomenclature}</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                    <BookOpen className="w-4 h-4" />
+                    {formData.courseType === 'course' ? courseNomenclature : postgraduateNomenclature}
+                  </Label>
+                  <Select value={formData.courseId} onValueChange={(value) => handleChange('courseId', value)}>
+                    <SelectTrigger className="w-full border-gray-300 focus:border-blue-500 lead-form-input">
+                      <SelectValue placeholder="Selecione um curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(formData.courseType === 'course' ? courses : postgraduateCourses).map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.courseType === 'course' && (
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                      <Clock className="w-4 h-4" />
+                      Turno de Preferência
+                    </Label>
+                    <Select value={formData.shift} onValueChange={(value) => handleChange('shift', value)}>
+                      <SelectTrigger className="w-full border-gray-300 focus:border-blue-500 lead-form-input">
+                        <SelectValue placeholder="Selecione um turno (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manhã">Manhã</SelectItem>
+                        <SelectItem value="tarde">Tarde</SelectItem>
+                        <SelectItem value="noite">Noite</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-              disabled={isLoading || isValidating}
-            >
-              {isLoading ? 'Enviando...' : 'Enviar Cadastro'}
-            </Button>
+            {/* Etapa 3: Finalização */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                {!qrCodeData && (
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
+                      <Calendar className="w-4 h-4" />
+                      Evento
+                    </Label>
+                    <Select value={formData.eventId} onValueChange={(value) => handleChange('eventId', value)}>
+                      <SelectTrigger className="w-full border-gray-300 focus:border-blue-500 lead-form-input">
+                        <SelectValue placeholder="Selecione um evento (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {events.map((event) => (
+                          <SelectItem key={event.id} value={event.id}>
+                            {event.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-3 lead-form-label">Resumo dos seus dados:</h3>
+                  <div className="space-y-2 text-sm">
+                    <p className="lead-form-label"><strong>Nome:</strong> {formData.name}</p>
+                    <p className="lead-form-label"><strong>WhatsApp:</strong> {formData.whatsapp}</p>
+                    <p className="lead-form-label"><strong>E-mail:</strong> {formData.email}</p>
+                    <p className="lead-form-label"><strong>Tipo:</strong> {formData.courseType === 'course' ? courseNomenclature : postgraduateNomenclature}</p>
+                    {formData.courseId && (
+                      <p className="lead-form-label">
+                        <strong>Curso:</strong> {
+                          (formData.courseType === 'course' ? courses : postgraduateCourses)
+                            .find(c => c.id === formData.courseId)?.name
+                        }
+                      </p>
+                    )}
+                    {formData.shift && <p className="lead-form-label"><strong>Turno:</strong> {formData.shift}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between pt-6">
+              {currentStep > 1 && (
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={prevStep}
+                  className="px-6"
+                >
+                  Voltar
+                </Button>
+              )}
+              
+              <div className="ml-auto">
+                {currentStep < 3 ? (
+                  <Button 
+                    type="button"
+                    onClick={nextStep}
+                    className="px-6 lead-form-step-button hover:opacity-90"
+                  >
+                    Próximo
+                  </Button>
+                ) : (
+                  <Button 
+                    type="submit" 
+                    className="px-6 lead-form-button hover:opacity-90 text-white font-semibold transition-all duration-200 transform hover:scale-105"
+                    disabled={isLoading || isValidating}
+                  >
+                    {isLoading ? 'Enviando...' : 'Finalizar Cadastro'}
+                  </Button>
+                )}
+              </div>
+            </div>
           </form>
         </CardContent>
       </Card>

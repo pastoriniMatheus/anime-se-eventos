@@ -72,36 +72,25 @@ serve(async (req) => {
 
     console.log('QR code encontrado:', qrCode);
 
-    // Incrementar contador de scans
-    const newScans = (qrCode.scans || 0) + 1;
-    const { error: updateError } = await supabase
-      .from('qr_codes')
-      .update({ scans: newScans })
-      .eq('id', qrCode.id);
-
-    if (updateError) {
-      console.error('Erro ao atualizar contador de scans:', updateError);
-    } else {
-      console.log('Contador de scans atualizado para:', newScans);
-    }
-
     // Registrar scan session
     const userAgent = req.headers.get('user-agent') || '';
     const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '';
 
-    const { error: sessionError } = await supabase
+    const { data: scanSession, error: sessionError } = await supabase
       .from('scan_sessions')
       .insert({
         qr_code_id: qrCode.id,
         event_id: qrCode.event_id,
         user_agent: userAgent,
         ip_address: ipAddress
-      });
+      })
+      .select()
+      .single();
 
     if (sessionError) {
       console.error('Erro ao registrar scan session:', sessionError);
     } else {
-      console.log('Scan session registrada');
+      console.log('Scan session registrada:', scanSession);
     }
 
     // Redirecionar para a URL original

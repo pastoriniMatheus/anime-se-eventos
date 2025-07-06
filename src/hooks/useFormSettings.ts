@@ -9,7 +9,21 @@ export const useFormSettings = () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('*')
-        .in('key', ['form_thank_you_message', 'form_thank_you_title', 'form_redirect_url', 'form_title', 'form_subtitle', 'whatsapp_validation_enabled']);
+        .in('key', [
+          'form_thank_you_message', 
+          'form_thank_you_title', 
+          'form_redirect_url', 
+          'form_title', 
+          'form_subtitle',
+          'form_primary_color',
+          'form_secondary_color', 
+          'form_button_color',
+          'form_background_color',
+          'form_text_color',
+          'form_field_background_color',
+          'form_field_border_color',
+          'whatsapp_validation_enabled'
+        ]);
       
       if (error) throw error;
       return data || [];

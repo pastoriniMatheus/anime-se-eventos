@@ -36,6 +36,13 @@ export const useConversionMetrics = () => {
         
         if (leadsError) throw leadsError;
 
+        // Buscar todas as sessões de scan
+        const { data: sessions, error: sessionsError } = await supabase
+          .from('scan_sessions')
+          .select('*');
+        
+        if (sessionsError) throw sessionsError;
+
         // Buscar dados de QR codes
         const { data: qrCodes, error: qrError } = await supabase
           .from('qr_codes')
@@ -43,25 +50,16 @@ export const useConversionMetrics = () => {
         
         if (qrError) throw qrError;
 
-        // Buscar sessões de scan usando a função RPC
-        const { data: sessions, error: sessionsError } = await (supabase as any).rpc('get_scan_sessions');
-        
-        if (sessionsError) {
-          console.error('Error fetching scan sessions:', sessionsError);
-        }
-
         const sessionsData = sessions || [];
         const totalScans = sessionsData.length;
         const totalLeads = leads?.length || 0;
         const convertedSessions = sessionsData.filter((s: any) => s?.lead_id).length;
-        
-        // Ajustar para usar a estrutura correta do QR code (sem campo scans separado)
-        const totalQRScans = qrCodes?.length || 0;
+        const totalQRCodes = qrCodes?.length || 0;
 
         return {
           totalScans,
           totalLeads,
-          totalQRScans,
+          totalQRScans: totalQRCodes,
           convertedSessions,
           conversionRate: totalScans > 0 ? (convertedSessions / totalScans) * 100 : 0,
           leadsPerScan: totalScans > 0 ? (totalLeads / totalScans) * 100 : 0,
