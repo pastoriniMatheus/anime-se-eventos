@@ -15,8 +15,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Calendar } from 'lucide-react';
 import PersonalInfoStep from '@/components/forms/PersonalInfoStep';
 import AcademicInterestStep from '@/components/forms/AcademicInterestStep';
+import PaymentStep from '@/components/forms/PaymentStep';
+import ReceiptUploadStep from '@/components/forms/ReceiptUploadStep';
 import FormProgress from '@/components/forms/FormProgress';
-import PaymentScreen from '@/components/PaymentScreen';
 
 const LeadForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,7 +29,6 @@ const LeadForm = () => {
     eventId: '',
     courseType: 'course'
   });
-  const [showPayment, setShowPayment] = useState(false);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [qrCodeData, setQrCodeData] = useState<any>(null);
   const [scanSessionId, setScanSessionId] = useState<string | null>(null);
@@ -53,6 +53,13 @@ const LeadForm = () => {
     });
     return settingsObj;
   }, [settingsArray]);
+
+  // Check if payment is enabled
+  const paymentEnabled = settings.payment_value && settings.pix_key;
+  const totalSteps = paymentEnabled ? 4 : 2;
+  const stepTitles = paymentEnabled 
+    ? ["Dados Pessoais", "Interesse Acadêmico", "Pagamento", "Comprovante"]
+    : ["Dados Pessoais", "Interesse Acadêmico"];
 
   // Apply dynamic styles
   useEffect(() => {
@@ -149,91 +156,75 @@ const LeadForm = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.whatsapp || !formData.email) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validação do WhatsApp se habilitada
-    const whatsappValidationEnabled = settingsArray.find(s => s.key === 'whatsapp_validation_enabled')?.value === 'true';
-    
-    if (whatsappValidationEnabled && validationResult !== 'valid') {
-      const isValid = await validateWhatsApp(formData.whatsapp);
-      if (!isValid) return;
-    }
-
-    try {
-      const newLeadId = await submitLead(formData, scanSessionId, qrCodeData);
-      
-      // Verificar se deve mostrar tela de pagamento
-      const paymentEnabled = settings.payment_value && settings.pix_key;
-      if (paymentEnabled) {
-        setLeadId(newLeadId);
-        setShowPayment(true);
-      } else {
-        // Redirecionar para página de sucesso ou inicial
-        navigate('/');
+  const validateCurrentStep = async () => {
+    if (currentStep === 1) {
+      if (!formData.name || !formData.whatsapp || !formData.email) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Por favor, preencha todos os campos obrigatórios.",
+          variant: "destructive",
+        });
+        return false;
       }
-    } catch (error) {
-      // Erro já tratado no hook
+
+      // Validação do WhatsApp se habilitada
+      const whatsappValidationEnabled = settingsArray.find(s => s.key === 'whatsapp_validation_enabled')?.value === 'true';
+      
+      if (whatsappValidationEnabled && validationResult !== 'valid') {
+        const isValid = await validateWhatsApp(formData.whatsapp);
+        if (!isValid) return false;
+      }
     }
+
+    if (currentStep === 2) {
+      if (!formData.courseId || !formData.courseType) {
+        toast({
+          title: "Campos obrigatórios",
+          description: "Por favor, selecione um curso.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+
+    return true;
   };
 
-  const nextStep = () => {
-    if (currentStep === 1 && (!formData.name || !formData.whatsapp || !formData.email)) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios antes de continuar.",
-        variant: "destructive",
-      });
-      return;
+  const nextStep = async () => {
+    const isValid = await validateCurrentStep();
+    if (!isValid) return;
+
+    // Se chegou ao final da etapa 2 e precisa criar o lead
+    if (currentStep === 2) {
+      try {
+        const newLeadId = await submitLead(formData, scanSessionId, qrCodeData);
+        setLeadId(newLeadId);
+        
+        if (!paymentEnabled) {
+          // Se não tem pagamento, finaliza aqui
+          navigate('/');
+          return;
+        }
+      } catch (error) {
+        // Erro já tratado no hook
+        return;
+      }
     }
-    setCurrentStep(prev => Math.min(prev + 1, 2));
+
+    setCurrentStep(prev => Math.min(prev + 1, totalSteps));
   };
 
   const prevStep = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handlePaymentComplete = () => {
+  const handleUploadComplete = () => {
+    toast({
+      title: "Cadastro finalizado!",
+      description: "Seu cadastro foi concluído com sucesso!",
+    });
     navigate('/');
   };
-
-  const handleBackToForm = () => {
-    setShowPayment(false);
-    setCurrentStep(1);
-    setFormData({
-      name: '',
-      whatsapp: '',
-      email: '',
-      courseId: '',
-      eventId: qrCodeData?.event_id || '',
-      courseType: 'course'
-    });
-    setLeadId(null);
-  };
-
-  if (showPayment && leadId) {
-    return (
-      <PaymentScreen 
-        leadId={leadId}
-        onComplete={handlePaymentComplete}
-        onBackToForm={handleBackToForm}
-        paymentValue={settings.payment_value || "R$ 200,00"}
-        pixKey={settings.pix_key || "pagamento@instituicao.com.br"}
-        qrCodeUrl={settings.payment_qr_code_url}
-      />
-    );
-  }
-
-  const stepTitles = ["Dados Pessoais", "Interesse Acadêmico"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 lead-form-container">
@@ -259,7 +250,7 @@ const LeadForm = () => {
           
           <FormProgress 
             currentStep={currentStep} 
-            totalSteps={2} 
+            totalSteps={totalSteps} 
             stepTitles={stepTitles} 
           />
         </CardHeader>
@@ -274,7 +265,7 @@ const LeadForm = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             {currentStep === 1 && (
               <PersonalInfoStep
                 formData={formData}
@@ -297,39 +288,47 @@ const LeadForm = () => {
               />
             )}
 
-            <div className="flex justify-between pt-6">
-              {currentStep > 1 && (
+            {currentStep === 3 && paymentEnabled && (
+              <PaymentStep
+                paymentValue={settings.payment_value || "R$ 200,00"}
+                pixKey={settings.pix_key || "pagamento@instituicao.com.br"}
+                qrCodeUrl={settings.payment_qr_code_url}
+              />
+            )}
+
+            {currentStep === 4 && paymentEnabled && leadId && (
+              <ReceiptUploadStep
+                leadId={leadId}
+                onUploadComplete={handleUploadComplete}
+              />
+            )}
+          </div>
+
+          <div className="flex justify-between pt-6">
+            {currentStep > 1 && (
+              <Button 
+                type="button"
+                variant="outline"
+                onClick={prevStep}
+                className="px-6"
+              >
+                Voltar
+              </Button>
+            )}
+            
+            <div className="ml-auto">
+              {currentStep < totalSteps ? (
                 <Button 
                   type="button"
-                  variant="outline"
-                  onClick={prevStep}
-                  className="px-6"
+                  onClick={nextStep}
+                  className="px-6 lead-form-step-button hover:opacity-90"
+                  disabled={isLoading || isValidating}
                 >
-                  Voltar
+                  {isLoading ? 'Enviando...' : (currentStep === 2 && !paymentEnabled ? 'Finalizar Cadastro' : 'Próximo')}
                 </Button>
-              )}
-              
-              <div className="ml-auto">
-                {currentStep < 2 ? (
-                  <Button 
-                    type="button"
-                    onClick={nextStep}
-                    className="px-6 lead-form-step-button hover:opacity-90"
-                  >
-                    Próximo
-                  </Button>
-                ) : (
-                  <Button 
-                    type="submit" 
-                    className="px-6 lead-form-button hover:opacity-90 text-white font-semibold transition-all duration-200 transform hover:scale-105"
-                    disabled={isLoading || isValidating}
-                  >
-                    {isLoading ? 'Enviando...' : 'Finalizar Cadastro'}
-                  </Button>
-                )}
-              </div>
+              ) : null}
             </div>
-          </form>
+          </div>
         </CardContent>
       </Card>
     </div>

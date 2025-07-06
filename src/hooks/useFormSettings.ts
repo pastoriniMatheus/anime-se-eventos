@@ -15,6 +15,7 @@ export const useFormSettings = () => {
           'form_redirect_url', 
           'form_title', 
           'form_subtitle',
+          'form_banner_image_url',
           'form_primary_color',
           'form_secondary_color', 
           'form_button_color',
@@ -22,6 +23,9 @@ export const useFormSettings = () => {
           'form_text_color',
           'form_field_background_color',
           'form_field_border_color',
+          'form_payment_value',
+          'form_pix_key',
+          'form_payment_qr_code_url',
           'whatsapp_validation_enabled'
         ]);
       
