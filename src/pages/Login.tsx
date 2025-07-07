@@ -58,7 +58,7 @@ const Login = () => {
         <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
           <CardHeader className="text-center pb-1 pt-1 py-0">
             <div className="flex justify-center mb-0 px-[24px] py-[24px]">
-              {settingsLoading ? <div className="w-48 h-32 bg-gray-200 animate-pulse rounded"></div> : <img src={logoUrl} alt="Logo" onError={e => {
+              {settingsLoading ? <div className="w-36 h-32 bg-gray-200 animate-pulse rounded"></div> : <img src={logoUrl} alt="Logo" onError={e => {
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
               target.nextElementSibling?.classList.remove('hidden');
@@ -99,13 +99,7 @@ const Login = () => {
               </Button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <button onClick={() => navigate('/apresentacao')} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                  Ver apresentação do sistema
-                </button>
-              </div>
-            </div>
+            
           </CardContent>
         </Card>
       </div>
