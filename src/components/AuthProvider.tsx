@@ -9,6 +9,8 @@ interface AuthProviderProps {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const auth = useAuthProvider();
   
+  console.log('[AuthProvider] Renderizando com user:', auth.user?.username || 'null');
+  
   return (
     <AuthContext.Provider value={auth}>
       {children}

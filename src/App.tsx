@@ -21,15 +21,7 @@ import { useAuth } from "./hooks/useAuth";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (failureCount, error) => {
-        if (error && typeof error === 'object' && 'status' in error) {
-          const status = (error as any).status;
-          if (typeof status === 'number' && status >= 400 && status < 500) {
-            return false;
-          }
-        }
-        return failureCount < 3;
-      },
+      retry: 1,
       staleTime: 5 * 60 * 1000,
     },
   },
@@ -38,11 +30,10 @@ const queryClient = new QueryClient({
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   
-  console.log('[ProtectedRoute] User:', user);
+  console.log('[ProtectedRoute] User:', user?.username || 'null');
   console.log('[ProtectedRoute] Loading:', loading);
   
   if (loading) {
-    console.log('[ProtectedRoute] Mostrando loading...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -54,17 +45,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    console.log('[ProtectedRoute] Usuário não autenticado, redirecionando para login');
+    console.log('[ProtectedRoute] Redirecionando para login');
     return <Navigate to="/login" replace />;
   }
   
-  console.log('[ProtectedRoute] Usuário autenticado, mostrando conteúdo');
   return <>{children}</>;
 }
 
 function AppRoutes() {
-  console.log('[AppRoutes] Renderizando rotas...');
-  
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
