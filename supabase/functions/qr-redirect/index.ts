@@ -59,24 +59,23 @@ serve(async (req) => {
 
     console.log('QR code found:', qrCode.id);
 
-    // Increment scan counter (most important - do this first)
-    const newScanCount = (qrCode.scans || 0) + 1;
-    const { error: updateError } = await supabase
-      .from('qr_codes')
-      .update({ scans: newScanCount })
-      .eq('id', qrCode.id);
+    // Increment scan counter usando RPC function (mais confiável)
+    const { error: incrementError } = await supabase.rpc('increment_qr_scan', {
+      tracking_id: qrCode.tracking_id
+    });
 
-    if (updateError) {
-      console.error('Error updating scan count:', updateError);
+    if (incrementError) {
+      console.error('Error incrementing scan count:', incrementError);
     } else {
-      console.log('Scan count updated to:', newScanCount);
+      console.log('Scan count incremented successfully');
     }
 
     // Register scan session
     const userAgent = req.headers.get('user-agent') || '';
     const ipAddress = req.headers.get('x-forwarded-for') || 
                      req.headers.get('x-real-ip') || 
-                     req.headers.get('cf-connecting-ip') || '';
+                     req.headers.get('cf-connecting-ip') || 
+                     'unknown';
 
     const { data: scanSession, error: sessionError } = await supabase
       .from('scan_sessions')
@@ -105,6 +104,13 @@ serve(async (req) => {
         status: 500,
         headers: corsHeaders 
       });
+    }
+
+    // Adicionar tracking_id na URL se não estiver presente
+    const urlObj = new URL(redirectUrl);
+    if (!urlObj.searchParams.has('t') && !urlObj.searchParams.has('tracking')) {
+      urlObj.searchParams.set('t', qrCode.tracking_id);
+      redirectUrl = urlObj.toString();
     }
 
     console.log('Redirecting to:', redirectUrl);

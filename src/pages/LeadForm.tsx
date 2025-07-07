@@ -247,8 +247,20 @@ const LeadForm = () => {
     if (trackingId) {
       const fetchQRCodeData = async () => {
         try {
-          console.log('Buscando dados do QR code:', trackingId);
+          console.log('[LeadForm] Buscando dados do QR code:', trackingId);
           
+          // Incrementar contador de scan primeiro
+          const { error: incrementError } = await supabase.rpc('increment_qr_scan', {
+            tracking_id: trackingId
+          });
+
+          if (incrementError) {
+            console.error('[LeadForm] Erro ao incrementar scan:', incrementError);
+          } else {
+            console.log('[LeadForm] Scan incrementado com sucesso');
+          }
+
+          // Buscar dados do QR code
           const { data: qrCode, error } = await supabase
             .from('qr_codes')
             .select('*, event:events(name, whatsapp_number)')
@@ -256,20 +268,40 @@ const LeadForm = () => {
             .single();
 
           if (error) {
-            console.error('Erro ao buscar QR code:', error);
+            console.error('[LeadForm] Erro ao buscar QR code:', error);
             return;
           }
 
           if (qrCode) {
-            console.log('QR code encontrado:', qrCode);
+            console.log('[LeadForm] QR code encontrado:', qrCode);
             setQrCodeData(qrCode);
             setFormData(prev => ({
               ...prev,
               eventId: qrCode.event_id || ''
             }));
+
+            // Criar sessão de scan
+            const { data: scanSession, error: sessionError } = await supabase
+              .from('scan_sessions')
+              .insert({
+                qr_code_id: qrCode.id,
+                event_id: qrCode.event_id,
+                scanned_at: new Date().toISOString(),
+                user_agent: navigator.userAgent,
+                ip_address: 'web-access' // Placeholder já que não temos acesso ao IP real no frontend
+              })
+              .select()
+              .single();
+
+            if (sessionError) {
+              console.error('[LeadForm] Erro ao criar sessão de scan:', sessionError);
+            } else if (scanSession) {
+              console.log('[LeadForm] Sessão de scan criada:', scanSession.id);
+              setScanSessionId(scanSession.id);
+            }
           }
         } catch (error) {
-          console.error('Erro na busca do QR code:', error);
+          console.error('[LeadForm] Erro na busca do QR code:', error);
         }
       };
 
@@ -327,7 +359,7 @@ const LeadForm = () => {
     const isValid = await validateCurrentStep();
     if (!isValid) return;
 
-    // Se chegou ao final da etapa 2
+    // Se chegou ao final das etapas obrigatórias (etapa 2)
     if (currentStep === 2) {
       if (!paymentEnabled) {
         // Se não tem pagamento, cria o lead e mostra tela de agradecimento

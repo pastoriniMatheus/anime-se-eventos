@@ -24,28 +24,46 @@ export const useLeadSubmission = () => {
     setIsLoading(true);
 
     try {
-      console.log('Enviando lead:', formData);
-
-      const response = await supabase.functions.invoke('lead-capture', {
-        body: {
-          name: formData.name,
-          whatsapp: formData.whatsapp,
-          email: formData.email,
-          eventName: qrCodeData?.event?.name || null,
-          trackingId: qrCodeData?.tracking_id || null,
-          courseId: formData.courseType === 'course' ? formData.courseId || null : null,
-          postgraduateCourseId: formData.courseType === 'postgraduate' ? formData.courseId || null : null,
-          courseType: formData.courseType
-        }
+      console.log('[useLeadSubmission] Enviando lead:', {
+        ...formData,
+        scanSessionId,
+        qrCodeData: qrCodeData ? { id: qrCodeData.id, event: qrCodeData.event?.name } : null
       });
 
+      // Preparar dados para envio
+      const leadSubmissionData = {
+        name: formData.name,
+        whatsapp: formData.whatsapp,
+        email: formData.email,
+        eventName: qrCodeData?.event?.name || null,
+        trackingId: qrCodeData?.tracking_id || null,
+        courseId: formData.courseType === 'course' ? formData.courseId || null : null,
+        postgraduateCourseId: formData.courseType === 'postgraduate' ? formData.courseId || null : null,
+        courseType: formData.courseType,
+        scanSessionId: scanSessionId
+      };
+
+      console.log('[useLeadSubmission] Dados preparados:', leadSubmissionData);
+
+      const response = await supabase.functions.invoke('lead-capture', {
+        body: leadSubmissionData
+      });
+
+      console.log('[useLeadSubmission] Resposta da função:', response);
+
       if (response.error) {
-        console.error('Erro na função lead-capture:', response.error);
+        console.error('[useLeadSubmission] Erro na função lead-capture:', response.error);
         throw new Error(response.error.message || 'Erro ao enviar formulário');
       }
 
       const { data } = response;
-      console.log('Lead criado com sucesso:', data);
+      
+      if (!data || !data.success) {
+        console.error('[useLeadSubmission] Resposta sem sucesso:', data);
+        throw new Error(data?.error || 'Erro ao processar formulário');
+      }
+
+      console.log('[useLeadSubmission] Lead criado com sucesso:', data.leadId);
 
       toast({
         title: "Sucesso!",
@@ -54,10 +72,12 @@ export const useLeadSubmission = () => {
 
       return data.leadId;
     } catch (error) {
-      console.error('Erro ao enviar formulário:', error);
+      console.error('[useLeadSubmission] Erro ao enviar formulário:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao enviar formulário. Tente novamente.';
+      
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Erro ao enviar formulário. Tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
       throw error;

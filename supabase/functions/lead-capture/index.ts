@@ -21,9 +21,12 @@ serve(async (req) => {
     
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Missing Supabase environment variables');
-      return new Response('Server configuration error', { 
+      return new Response(JSON.stringify({ 
+        error: 'Server configuration error',
+        success: false
+      }), { 
         status: 500,
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     
@@ -38,7 +41,8 @@ serve(async (req) => {
       courseId, 
       postgraduateCourseId, 
       courseType,
-      receiptUrl 
+      receiptUrl,
+      scanSessionId
     } = await req.json();
 
     console.log('Form data received:', { 
@@ -48,27 +52,36 @@ serve(async (req) => {
       eventName, 
       trackingId, 
       courseType,
-      receiptUrl
+      receiptUrl,
+      scanSessionId,
+      courseId: courseId || 'null',
+      postgraduateCourseId: postgraduateCourseId || 'null'
     });
 
-    // Validações
-    if (!name) {
-      return new Response(JSON.stringify({ error: 'Nome é obrigatório' }), {
+    // Validações básicas
+    if (!name || name.trim() === '') {
+      return new Response(JSON.stringify({ 
+        error: 'Nome é obrigatório',
+        success: false
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    if (!whatsapp) {
-      return new Response(JSON.stringify({ error: 'WhatsApp é obrigatório' }), {
+    if (!whatsapp || whatsapp.trim() === '') {
+      return new Response(JSON.stringify({ 
+        error: 'WhatsApp é obrigatório',
+        success: false
+      }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Buscar evento pelo nome
+    // Buscar evento pelo nome se fornecido
     let eventId = null;
-    if (eventName) {
+    if (eventName && eventName.trim() !== '') {
       console.log('Buscando evento:', eventName);
       const { data: event, error: eventError } = await supabase
         .from('events')
@@ -84,52 +97,34 @@ serve(async (req) => {
       }
     }
 
-    // Buscar scan session pelo tracking_id se fornecido
-    let scanSessionId = null;
-    if (trackingId) {
-      console.log('Buscando scan session pelo tracking:', trackingId);
-      
-      // Primeiro buscar o QR code pelo tracking_id
-      const { data: qrCode, error: qrError } = await supabase
-        .from('qr_codes')
-        .select('id')
-        .eq('tracking_id', trackingId)
-        .single();
-
-      if (!qrError && qrCode) {
-        console.log('QR code encontrado:', qrCode.id);
-        
-        // Buscar scan session pelo qr_code_id
-        const { data: scanSession, error: sessionError } = await supabase
-          .from('scan_sessions')
-          .select('id')
-          .eq('qr_code_id', qrCode.id)
-          .is('lead_id', null)
-          .order('scanned_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (!sessionError && scanSession) {
-          scanSessionId = scanSession.id;
-          console.log('Scan session encontrada:', scanSessionId);
-        }
-      }
-    }
-
-    // Criar lead
+    // Preparar dados do lead
     const leadData: any = {
-      name,
-      whatsapp,
+      name: name.trim(),
+      whatsapp: whatsapp.trim(),
       event_id: eventId,
       scan_session_id: scanSessionId
     };
 
     // Adicionar campos opcionais
-    if (email) leadData.email = email;
-    if (courseId) leadData.course_id = courseId;
-    if (postgraduateCourseId) leadData.postgraduate_course_id = postgraduateCourseId;
-    if (courseType) leadData.course_type = courseType;
-    if (receiptUrl) leadData.receipt_url = receiptUrl;
+    if (email && email.trim() !== '') {
+      leadData.email = email.trim();
+    }
+
+    if (courseId && courseId.trim() !== '') {
+      leadData.course_id = courseId;
+    }
+
+    if (postgraduateCourseId && postgraduateCourseId.trim() !== '') {
+      leadData.postgraduate_course_id = postgraduateCourseId;
+    }
+
+    if (courseType && courseType.trim() !== '') {
+      leadData.course_type = courseType;
+    }
+
+    if (receiptUrl && receiptUrl.trim() !== '') {
+      leadData.receipt_url = receiptUrl;
+    }
 
     console.log('Criando lead com dados:', leadData);
 
@@ -141,7 +136,10 @@ serve(async (req) => {
 
     if (leadError) {
       console.error('Erro ao criar lead:', leadError);
-      return new Response(JSON.stringify({ error: 'Erro ao salvar lead' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Erro ao salvar lead: ' + leadError.message,
+        success: false
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -179,7 +177,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Erro na função lead-capture:', error);
-    return new Response(JSON.stringify({ error: 'Erro interno do servidor' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Erro interno do servidor: ' + (error instanceof Error ? error.message : 'Erro desconhecido'),
+      success: false
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
