@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -287,6 +286,8 @@ const LeadForm = () => {
   };
 
   const validateCurrentStep = async () => {
+    console.log(`[LeadForm] Validando etapa ${currentStep}`);
+    
     if (currentStep === 1) {
       if (!formData.name || !formData.whatsapp || !formData.email) {
         toast({
@@ -321,23 +322,35 @@ const LeadForm = () => {
   };
 
   const nextStep = async () => {
+    console.log(`[LeadForm] Avançando da etapa ${currentStep}`);
+    
     const isValid = await validateCurrentStep();
     if (!isValid) return;
 
-    // Se chegou ao final da etapa 2 e precisa criar o lead
+    // Se chegou ao final da etapa 2
     if (currentStep === 2) {
-      try {
-        const newLeadId = await submitLead(formData, scanSessionId, qrCodeData);
-        setLeadId(newLeadId);
-        
-        if (!paymentEnabled) {
-          // Se não tem pagamento, mostra tela de agradecimento
+      if (!paymentEnabled) {
+        // Se não tem pagamento, cria o lead e mostra tela de agradecimento
+        try {
+          console.log('[LeadForm] Criando lead (sem pagamento)');
+          const newLeadId = await submitLead(formData, scanSessionId, qrCodeData);
+          setLeadId(newLeadId);
           setShowThankYou(true);
           return;
+        } catch (error) {
+          console.error('[LeadForm] Erro ao criar lead:', error);
+          return;
         }
-      } catch (error) {
-        // Erro já tratado no hook
-        return;
+      } else {
+        // Se tem pagamento, cria o lead e avança para a etapa de pagamento
+        try {
+          console.log('[LeadForm] Criando lead (com pagamento)');
+          const newLeadId = await submitLead(formData, scanSessionId, qrCodeData);
+          setLeadId(newLeadId);
+        } catch (error) {
+          console.error('[LeadForm] Erro ao criar lead:', error);
+          return;
+        }
       }
     }
 
