@@ -51,7 +51,7 @@ export const useAuthProvider = () => {
     try {
       console.log('[Auth] === INÍCIO DO LOGIN ===');
       console.log('[Auth] Username:', username);
-      console.log('[Auth] Supabase URL:', supabase.supabaseUrl);
+      console.log('[Auth] Supabase configurado e pronto para uso');
       
       // Teste de conectividade básica
       console.log('[Auth] Testando conectividade com authorized_users...');
@@ -104,13 +104,33 @@ export const useAuthProvider = () => {
         console.log('[Auth] Resultado da verificação:', result);
         
         if (result.success) {
-          const userData = result.user_data as User;
-          console.log('[Auth] Login bem-sucedido! Dados do usuário:', userData);
+          // Validar e converter o user_data para o tipo User
+          const rawUserData = result.user_data;
           
-          setUser(userData);
-          localStorage.setItem('cesmac_user', JSON.stringify(userData));
-          
-          return { success: true };
+          if (rawUserData && typeof rawUserData === 'object' && !Array.isArray(rawUserData)) {
+            const userData = rawUserData as { id: string; username: string; email: string };
+            
+            if (userData.id && userData.username && userData.email) {
+              console.log('[Auth] Login bem-sucedido! Dados do usuário:', userData);
+              
+              const validUser: User = {
+                id: userData.id,
+                username: userData.username,
+                email: userData.email
+              };
+              
+              setUser(validUser);
+              localStorage.setItem('cesmac_user', JSON.stringify(validUser));
+              
+              return { success: true };
+            } else {
+              console.error('[Auth] Dados do usuário incompletos:', userData);
+              return { success: false, error: 'Dados do usuário incompletos' };
+            }
+          } else {
+            console.error('[Auth] Formato de dados de usuário inválido:', rawUserData);
+            return { success: false, error: 'Formato de dados inválido' };
+          }
         } else {
           console.log('[Auth] Credenciais incorretas');
           return { success: false, error: 'Usuário ou senha incorretos' };
