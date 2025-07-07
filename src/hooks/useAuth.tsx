@@ -35,7 +35,7 @@ export const useAuthProvider = () => {
     try {
       const savedUser = localStorage.getItem('cesmac_user');
       if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
+        const parsedUser = JSON.parse(savedUser) as User;
         console.log('[Auth] Usuário encontrado:', parsedUser.username);
         setUser(parsedUser);
       }
@@ -57,17 +57,26 @@ export const useAuthProvider = () => {
         p_password: password
       });
 
+      console.log('[Auth] Resposta RPC:', { data, error });
+
       if (error) {
         console.error('[Auth] Erro RPC:', error);
         return { success: false, error: 'Erro de conexão' };
       }
 
       if (data && data.length > 0 && data[0].success) {
-        const userData = data[0].user_data;
-        console.log('[Auth] Login bem-sucedido:', userData);
+        // Safely convert Json to User type
+        const userData = data[0].user_data as any;
+        const user: User = {
+          id: userData.id,
+          username: userData.username,
+          email: userData.email
+        };
         
-        setUser(userData);
-        localStorage.setItem('cesmac_user', JSON.stringify(userData));
+        console.log('[Auth] Login bem-sucedido:', user);
+        
+        setUser(user);
+        localStorage.setItem('cesmac_user', JSON.stringify(user));
         return { success: true };
       } else {
         console.log('[Auth] Credenciais inválidas');
