@@ -33,14 +33,12 @@ export const useAuthProvider = () => {
     console.log('[Auth] Iniciando verificação de usuário salvo...');
     
     try {
-      // Verificar se há usuário logado no localStorage
       const savedUser = localStorage.getItem('cesmac_user');
       if (savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser);
           console.log('[Auth] Usuário carregado do localStorage:', parsedUser);
           
-          // Validar se os dados do usuário são válidos
           if (parsedUser && parsedUser.id && parsedUser.username && parsedUser.email) {
             setUser(parsedUser);
             console.log('[Auth] Usuário válido carregado');
@@ -67,38 +65,6 @@ export const useAuthProvider = () => {
     try {
       console.log('[Auth] === INÍCIO DO LOGIN ===');
       console.log('[Auth] Username:', username);
-      console.log('[Auth] Supabase configurado e pronto para uso');
-      
-      // Teste de conectividade básica
-      console.log('[Auth] Testando conectividade com authorized_users...');
-      const { data: testData, error: testError } = await supabase
-        .from('authorized_users')
-        .select('username')
-        .limit(1);
-      
-      console.log('[Auth] Teste de conectividade - Data:', testData);
-      console.log('[Auth] Teste de conectividade - Error:', testError);
-      
-      if (testError) {
-        console.error('[Auth] Erro na conectividade:', testError);
-        return { success: false, error: 'Erro de conexão: ' + testError.message };
-      }
-      
-      // Verificar se o usuário existe na tabela
-      console.log('[Auth] Verificando se usuário existe...');
-      const { data: userExists, error: userExistsError } = await supabase
-        .from('authorized_users')
-        .select('username, email, id')
-        .eq('username', username)
-        .single();
-        
-      console.log('[Auth] Usuário existe - Data:', userExists);
-      console.log('[Auth] Usuário existe - Error:', userExistsError);
-      
-      if (userExistsError || !userExists) {
-        console.log('[Auth] Usuário não encontrado');
-        return { success: false, error: 'Usuário não encontrado' };
-      }
       
       // Chamar função RPC para verificar login
       console.log('[Auth] Chamando verify_login...');
@@ -119,33 +85,25 @@ export const useAuthProvider = () => {
         const result = rpcData[0];
         console.log('[Auth] Resultado da verificação:', result);
         
-        if (result.success) {
-          // Validar e converter o user_data para o tipo User
-          const rawUserData = result.user_data;
+        if (result.success && result.user_data) {
+          const userData = result.user_data as any;
           
-          if (rawUserData && typeof rawUserData === 'object' && !Array.isArray(rawUserData)) {
-            const userData = rawUserData as { id: string; username: string; email: string };
+          if (userData.id && userData.username && userData.email) {
+            console.log('[Auth] Login bem-sucedido! Dados do usuário:', userData);
             
-            if (userData.id && userData.username && userData.email) {
-              console.log('[Auth] Login bem-sucedido! Dados do usuário:', userData);
-              
-              const validUser: User = {
-                id: userData.id,
-                username: userData.username,
-                email: userData.email
-              };
-              
-              setUser(validUser);
-              localStorage.setItem('cesmac_user', JSON.stringify(validUser));
-              
-              return { success: true };
-            } else {
-              console.error('[Auth] Dados do usuário incompletos:', userData);
-              return { success: false, error: 'Dados do usuário incompletos' };
-            }
+            const validUser: User = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email
+            };
+            
+            setUser(validUser);
+            localStorage.setItem('cesmac_user', JSON.stringify(validUser));
+            
+            return { success: true };
           } else {
-            console.error('[Auth] Formato de dados de usuário inválido:', rawUserData);
-            return { success: false, error: 'Formato de dados inválido' };
+            console.error('[Auth] Dados do usuário incompletos:', userData);
+            return { success: false, error: 'Dados do usuário incompletos' };
           }
         } else {
           console.log('[Auth] Credenciais incorretas');
