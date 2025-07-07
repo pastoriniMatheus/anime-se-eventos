@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -182,7 +183,7 @@ const Leads = () => {
       course_id: lead.course_id || '',
       postgraduate_course_id: lead.postgraduate_course_id || '',
       event_id: lead.event_id || '',
-      status_id: lead.status_id || leadStatuses[0]?.id || ''
+      status_id: lead.status_id || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -288,7 +289,7 @@ const Leads = () => {
                         <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhum {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
+                        <SelectItem value="none">Nenhum {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
                         {courses.map((course: any) => (
                           <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                         ))}
@@ -307,7 +308,7 @@ const Leads = () => {
                         <SelectValue placeholder={`Selecione uma ${postgraduateNomenclature.toLowerCase()}`} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Nenhuma {postgraduateNomenclature.toLowerCase()}</SelectItem>
+                        <SelectItem value="none">Nenhuma {postgraduateNomenclature.toLowerCase()}</SelectItem>
                         {postgraduateCourses.map((course: any) => (
                           <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                         ))}
@@ -325,7 +326,7 @@ const Leads = () => {
                       <SelectValue placeholder="Selecione um evento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum evento</SelectItem>
+                      <SelectItem value="none">Nenhum evento</SelectItem>
                       {events.map((event: any) => (
                         <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                       ))}
@@ -463,11 +464,7 @@ const Leads = () => {
                   </TableCell>
                   <TableCell>{lead.event?.name || '-'}</TableCell>
                   <TableCell>
-                    {lead.status ? (
-                      <StatusEditor leadId={lead.id} currentStatus={lead.status} />
-                    ) : (
-                      '-'
-                    )}
+                    <StatusEditor leadId={lead.id} currentStatus={lead.status} />
                   </TableCell>
                   <TableCell>
                     {lead.receipt_url ? (
@@ -582,13 +579,13 @@ const Leads = () => {
                   <Label htmlFor="edit-course">{courseNomenclature.slice(0, -1)}</Label>
                   <Select 
                     value={editingLead.course_id} 
-                    onValueChange={(value) => setEditingLead({...editingLead, course_id: value})}
+                    onValueChange={(value) => setEditingLead({...editingLead, course_id: value === 'none' ? '' : value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhum {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
+                      <SelectItem value="none">Nenhum {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
                       {courses.map((course: any) => (
                         <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                       ))}
@@ -601,13 +598,13 @@ const Leads = () => {
                   <Label htmlFor="edit-postgraduate">{postgraduateNomenclature}</Label>
                   <Select 
                     value={editingLead.postgraduate_course_id} 
-                    onValueChange={(value) => setEditingLead({...editingLead, postgraduate_course_id: value})}
+                    onValueChange={(value) => setEditingLead({...editingLead, postgraduate_course_id: value === 'none' ? '' : value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={`Selecione uma ${postgraduateNomenclature.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma {postgraduateNomenclature.toLowerCase()}</SelectItem>
+                      <SelectItem value="none">Nenhuma {postgraduateNomenclature.toLowerCase()}</SelectItem>
                       {postgraduateCourses.map((course: any) => (
                         <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                       ))}
@@ -619,13 +616,13 @@ const Leads = () => {
                 <Label htmlFor="edit-event">Evento</Label>
                 <Select 
                   value={editingLead.event_id} 
-                  onValueChange={(value) => setEditingLead({...editingLead, event_id: value})}
+                  onValueChange={(value) => setEditingLead({...editingLead, event_id: value === 'none' ? '' : value})}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um evento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum evento</SelectItem>
+                    <SelectItem value="none">Nenhum evento</SelectItem>
                     {events.map((event: any) => (
                       <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                     ))}

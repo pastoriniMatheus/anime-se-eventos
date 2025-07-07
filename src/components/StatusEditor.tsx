@@ -45,14 +45,27 @@ const StatusEditor = ({ leadId, currentStatus }: StatusEditorProps) => {
 
   if (isEditing) {
     return (
-      <Select value={currentStatus?.id} onValueChange={handleStatusChange}>
+      <Select 
+        value={currentStatus?.id || ""} 
+        onValueChange={handleStatusChange}
+        onOpenChange={(open) => {
+          if (!open) setIsEditing(false);
+        }}
+        defaultOpen={true}
+      >
         <SelectTrigger className="w-32">
-          <SelectValue />
+          <SelectValue placeholder="Selecione..." />
         </SelectTrigger>
         <SelectContent>
           {leadStatuses.map((status: any) => (
             <SelectItem key={status.id} value={status.id}>
-              {status.name}
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-3 h-3 rounded-full" 
+                  style={{ backgroundColor: status.color }}
+                />
+                {status.name}
+              </div>
             </SelectItem>
           ))}
         </SelectContent>
@@ -62,11 +75,15 @@ const StatusEditor = ({ leadId, currentStatus }: StatusEditorProps) => {
 
   return (
     <Badge 
-      style={{ backgroundColor: currentStatus?.color, color: 'white' }}
-      className="cursor-pointer hover:opacity-80"
+      style={{ 
+        backgroundColor: currentStatus?.color || '#f59e0b', 
+        color: 'white',
+        cursor: 'pointer'
+      }}
+      className="hover:opacity-80 transition-opacity"
       onClick={() => setIsEditing(true)}
     >
-      {currentStatus?.name}
+      {currentStatus?.name || 'Sem status'}
     </Badge>
   );
 };
