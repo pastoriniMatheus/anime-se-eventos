@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -28,10 +27,14 @@ export const useCheckExistingLead = () => {
   return useMutation({
     mutationFn: async ({ name, whatsapp, email }: { name: string; whatsapp: string; email: string }) => {
       const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const trimmedName = name.trim();
+      const nameWords = trimmedName.split(' ').filter(word => word.length > 0);
       
-      console.log('[useCheckExistingLead] Verificando lead existente:', { name, whatsapp: cleanWhatsapp, email });
+      console.log('[useCheckExistingLead] Verificando lead existente:', { name: trimmedName, whatsapp: cleanWhatsapp, email });
+      console.log('[useCheckExistingLead] Palavras do nome:', nameWords);
       
-      const { data, error } = await supabase
+      // Primeira busca: exact match por email ou whatsapp (mais confiável)
+      const { data: exactMatch, error: exactError } = await supabase
         .from('leads')
         .select(`
           *,
@@ -39,17 +42,90 @@ export const useCheckExistingLead = () => {
           postgraduate_course:postgraduate_courses(name),
           status:lead_statuses(name, color)
         `)
-        .or(`name.ilike.%${name}%,whatsapp.eq.${cleanWhatsapp},email.ilike.${email}`)
+        .or(`whatsapp.eq.${cleanWhatsapp},email.ilike.${email}`)
         .limit(1)
         .maybeSingle();
       
-      if (error) {
-        console.error('[useCheckExistingLead] Erro ao verificar lead:', error);
-        throw error;
+      if (exactError) {
+        console.error('[useCheckExistingLead] Erro na busca exata:', exactError);
+        throw exactError;
       }
       
-      console.log('[useCheckExistingLead] Lead encontrado:', data);
-      return data;
+      if (exactMatch) {
+        console.log('[useCheckExistingLead] Match exato encontrado por email/whatsapp:', exactMatch);
+        return exactMatch;
+      }
+      
+      // Segunda busca: por nome, mas apenas se tiver pelo menos 2 palavras
+      if (nameWords.length >= 2) {
+        // Se tem 2 ou mais palavras, busca pelo nome completo (mais preciso)
+        const { data: nameMatches, error: nameError } = await supabase
+          .from('leads')
+          .select(`
+            *,
+            course:courses(name),
+            postgraduate_course:postgraduate_courses(name),
+            status:lead_statuses(name, color)
+          `)
+          .ilike('name', `%${trimmedName}%`)
+          .limit(5);
+        
+        if (nameError) {
+          console.error('[useCheckExistingLead] Erro na busca por nome:', nameError);
+          throw nameError;
+        }
+        
+        if (nameMatches && nameMatches.length > 0) {
+          // Se encontrou múltiplos, verifica se algum é exato
+          const exactNameMatch = nameMatches.find(lead => 
+            lead.name.toLowerCase().trim() === trimmedName.toLowerCase()
+          );
+          
+          if (exactNameMatch) {
+            console.log('[useCheckExistingLead] Match exato por nome encontrado:', exactNameMatch);
+            return exactNameMatch;
+          }
+          
+          // Se não tem match exato mas tem apenas 1 resultado similar, considera
+          if (nameMatches.length === 1) {
+            console.log('[useCheckExistingLead] Único match similar por nome:', nameMatches[0]);
+            return nameMatches[0];
+          }
+          
+          console.log('[useCheckExistingLead] Múltiplos matches por nome, nenhum exato:', nameMatches.length);
+        }
+      } else if (nameWords.length === 1) {
+        // Se tem apenas 1 palavra (primeiro nome), só busca se for muito específico
+        const singleWord = nameWords[0];
+        if (singleWord.length >= 4) { // Pelo menos 4 caracteres para evitar nomes muito comuns
+          const { data: singleNameMatch, error: singleError } = await supabase
+            .from('leads')
+            .select(`
+              *,
+              course:courses(name),
+              postgraduate_course:postgraduate_courses(name),
+              status:lead_statuses(name, color)
+            `)
+            .ilike('name', `${singleWord}%`)
+            .limit(2);
+          
+          if (singleError) {
+            console.error('[useCheckExistingLead] Erro na busca por nome único:', singleError);
+            throw singleError;
+          }
+          
+          // Só retorna se encontrou exatamente 1 resultado
+          if (singleNameMatch && singleNameMatch.length === 1) {
+            console.log('[useCheckExistingLead] Match único por primeiro nome:', singleNameMatch[0]);
+            return singleNameMatch[0];
+          }
+          
+          console.log('[useCheckExistingLead] Múltiplos ou nenhum match por primeiro nome:', singleNameMatch?.length || 0);
+        }
+      }
+      
+      console.log('[useCheckExistingLead] Nenhum lead existente encontrado');
+      return null;
     }
   });
 };
