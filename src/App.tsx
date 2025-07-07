@@ -1,5 +1,4 @@
 
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -41,22 +40,33 @@ const queryClient = new QueryClient({
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   
+  console.log('[ProtectedRoute] User:', user);
+  console.log('[ProtectedRoute] Loading:', loading);
+  
   if (loading) {
+    console.log('[ProtectedRoute] Mostrando loading...');
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
       </div>
     );
   }
   
   if (!user) {
+    console.log('[ProtectedRoute] Usuário não autenticado, redirecionando para login');
     return <Navigate to="/login" replace />;
   }
   
+  console.log('[ProtectedRoute] Usuário autenticado, mostrando conteúdo');
   return <>{children}</>;
 }
 
 function AppRoutes() {
+  console.log('[AppRoutes] Renderizando rotas...');
+  
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -81,6 +91,8 @@ function AppRoutes() {
 }
 
 function App() {
+  console.log('[App] Iniciando aplicação...');
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

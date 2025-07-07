@@ -32,19 +32,35 @@ export const useAuthProvider = () => {
   useEffect(() => {
     console.log('[Auth] Iniciando verificação de usuário salvo...');
     
-    // Verificar se há usuário logado no localStorage
-    const savedUser = localStorage.getItem('cesmac_user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        console.log('[Auth] Usuário carregado do localStorage:', parsedUser);
-      } catch (error) {
-        console.error('[Auth] Erro ao carregar usuário do localStorage:', error);
-        localStorage.removeItem('cesmac_user');
+    try {
+      // Verificar se há usuário logado no localStorage
+      const savedUser = localStorage.getItem('cesmac_user');
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          console.log('[Auth] Usuário carregado do localStorage:', parsedUser);
+          
+          // Validar se os dados do usuário são válidos
+          if (parsedUser && parsedUser.id && parsedUser.username && parsedUser.email) {
+            setUser(parsedUser);
+            console.log('[Auth] Usuário válido carregado');
+          } else {
+            console.log('[Auth] Dados de usuário inválidos, removendo do localStorage');
+            localStorage.removeItem('cesmac_user');
+          }
+        } catch (error) {
+          console.error('[Auth] Erro ao carregar usuário do localStorage:', error);
+          localStorage.removeItem('cesmac_user');
+        }
+      } else {
+        console.log('[Auth] Nenhum usuário salvo encontrado');
       }
+    } catch (error) {
+      console.error('[Auth] Erro geral na verificação de usuário:', error);
+    } finally {
+      setLoading(false);
+      console.log('[Auth] Loading finalizado');
     }
-    setLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {
