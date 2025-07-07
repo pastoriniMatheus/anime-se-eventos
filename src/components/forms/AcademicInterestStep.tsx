@@ -72,7 +72,8 @@ const AcademicInterestStep = ({
         </Select>
       </div>
 
-      {!qrCodeData && (
+      {/* Só mostra o campo de evento se NÃO há dados do QR code */}
+      {!qrCodeData?.event?.name && (
         <div className="space-y-2">
           <Label className="text-gray-700 font-medium flex items-center gap-2 lead-form-label">
             <Calendar className="w-4 h-4" />

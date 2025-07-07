@@ -268,7 +268,7 @@ const LeadForm = () => {
           // Buscar dados do QR code
           const { data: qrCode, error } = await supabase
             .from('qr_codes')
-            .select('*, event:events(name, whatsapp_number)')
+            .select('*, event:events(id, name, whatsapp_number)')
             .eq('tracking_id', trackingId)
             .single();
 
@@ -280,9 +280,11 @@ const LeadForm = () => {
           if (qrCode) {
             console.log('[LeadForm] QR code encontrado:', qrCode);
             setQrCodeData(qrCode);
+            
+            // Definir automaticamente o evento no formData
             setFormData(prev => ({
               ...prev,
-              eventId: qrCode.event_id || ''
+              eventId: qrCode.event?.id || ''
             }));
 
             // Criar sessão de scan
@@ -290,10 +292,10 @@ const LeadForm = () => {
               .from('scan_sessions')
               .insert({
                 qr_code_id: qrCode.id,
-                event_id: qrCode.event_id,
+                event_id: qrCode.event?.id || qrCode.event_id,
                 scanned_at: new Date().toISOString(),
                 user_agent: navigator.userAgent,
-                ip_address: 'web-access' // Placeholder já que não temos acesso ao IP real no frontend
+                ip_address: 'web-access'
               })
               .select()
               .single();
@@ -495,11 +497,11 @@ const LeadForm = () => {
         </CardHeader>
         
         <CardContent className="p-8">
-          {qrCodeData && !showExistingUser && (
+          {qrCodeData?.event?.name && !showExistingUser && (
             <div className="mb-6 p-4 lead-form-qr-section">
               <div className="flex items-center gap-2 font-medium">
                 <Calendar className="w-4 h-4" />
-                <span>Evento: {qrCodeData.event?.name}</span>
+                <span>Evento: {qrCodeData.event.name}</span>
               </div>
             </div>
           )}
