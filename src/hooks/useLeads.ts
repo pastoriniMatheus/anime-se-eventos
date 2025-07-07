@@ -26,24 +26,29 @@ export const useLeads = () => {
 
 export const useCheckExistingLead = () => {
   return useMutation({
-    mutationFn: async ({ whatsapp, email }: { whatsapp: string; email: string }) => {
+    mutationFn: async ({ name, whatsapp, email }: { name: string; whatsapp: string; email: string }) => {
       const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      
+      console.log('[useCheckExistingLead] Verificando lead existente:', { name, whatsapp: cleanWhatsapp, email });
       
       const { data, error } = await supabase
         .from('leads')
         .select(`
           *,
           course:courses(name),
-          postgraduate_course:postgraduate_courses(name)
+          postgraduate_course:postgraduate_courses(name),
+          status:lead_statuses(name, color)
         `)
-        .or(`whatsapp.eq.${cleanWhatsapp},email.eq.${email}`)
+        .or(`name.ilike.%${name}%,whatsapp.eq.${cleanWhatsapp},email.ilike.${email}`)
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      if (error) {
+        console.error('[useCheckExistingLead] Erro ao verificar lead:', error);
         throw error;
       }
       
+      console.log('[useCheckExistingLead] Lead encontrado:', data);
       return data;
     }
   });
