@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -220,14 +219,14 @@ const Leads = () => {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-blue-600">Gerenciamento de Leads</h1>
-        <div className="flex space-x-2">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <h1 className="text-2xl md:text-3xl font-bold text-blue-600">Gerenciamento de Leads</h1>
+        <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
           <ContactExporter leads={leads} />
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700">
+              <Button className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 w-full md:w-auto">
                 <Plus className="h-4 w-4" />
                 <span>Novo Lead</span>
               </Button>
@@ -363,7 +362,7 @@ const Leads = () => {
           <CardTitle className="text-blue-600">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Buscar</Label>
               <div className="relative">
@@ -424,97 +423,99 @@ const Leads = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>ID do Lead</TableHead>
-                <TableHead>WhatsApp</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>{courseNomenclature.slice(0, -1)}</TableHead>
-                <TableHead>Evento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Comprovante</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLeads.map((lead: any) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">{lead.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {lead.id}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(lead.id, 'ID do Lead')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono">{lead.whatsapp}</TableCell>
-                  <TableCell>{lead.email}</TableCell>
-                  <TableCell>
-                    {lead.course_type === 'postgraduate' ? (
-                      <div className="flex items-center space-x-1">
-                        <GraduationCap className="h-4 w-4 text-purple-600" />
-                        <span>{lead.postgraduate_course?.name || '-'}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <BookOpen className="h-4 w-4 text-blue-600" />
-                        <span>{lead.course?.name || '-'}</span>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>{lead.event?.name || '-'}</TableCell>
-                  <TableCell>
-                    <StatusEditor leadId={lead.id} currentStatus={lead.status} />
-                  </TableCell>
-                  <TableCell>
-                    {lead.receipt_url ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(lead.receipt_url, '_blank')}
-                        className="text-green-600 hover:text-green-700"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(lead.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(lead)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteLead(lead.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="hidden md:table-cell">ID do Lead</TableHead>
+                  <TableHead>WhatsApp</TableHead>
+                  <TableHead className="hidden md:table-cell">E-mail</TableHead>
+                  <TableHead>{courseNomenclature.slice(0, -1)}</TableHead>
+                  <TableHead className="hidden lg:table-cell">Evento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Comprovante</TableHead>
+                  <TableHead className="hidden lg:table-cell">Criado em</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredLeads.map((lead: any) => (
+                  <TableRow key={lead.id}>
+                    <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex items-center space-x-2">
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {lead.id}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(lead.id, 'ID do Lead')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono">{lead.whatsapp}</TableCell>
+                    <TableCell className="hidden md:table-cell">{lead.email}</TableCell>
+                    <TableCell>
+                      {lead.course_type === 'postgraduate' ? (
+                        <div className="flex items-center space-x-1">
+                          <GraduationCap className="h-4 w-4 text-purple-600" />
+                          <span className="hidden sm:inline">{lead.postgraduate_course?.name || '-'}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <BookOpen className="h-4 w-4 text-blue-600" />
+                          <span className="hidden sm:inline">{lead.course?.name || '-'}</span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">{lead.event?.name || '-'}</TableCell>
+                    <TableCell>
+                      <StatusEditor leadId={lead.id} currentStatus={lead.status} />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {lead.receipt_url ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(lead.receipt_url, '_blank')}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(lead)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLead(lead.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
           {filteredLeads.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
