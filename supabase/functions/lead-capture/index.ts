@@ -97,12 +97,20 @@ serve(async (req) => {
       }
     }
 
+    // Buscar status "Pendente" para definir como padrão
+    const { data: pendingStatus } = await supabase
+      .from('lead_statuses')
+      .select('id')
+      .ilike('name', 'pendente')
+      .single();
+
     // Preparar dados do lead
     const leadData: any = {
       name: name.trim(),
       whatsapp: whatsapp.trim(),
       event_id: eventId,
-      scan_session_id: scanSessionId
+      scan_session_id: scanSessionId,
+      status_id: pendingStatus?.id || null
     };
 
     // Adicionar campos opcionais

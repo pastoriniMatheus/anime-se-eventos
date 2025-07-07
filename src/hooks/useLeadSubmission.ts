@@ -21,6 +21,12 @@ export const useLeadSubmission = () => {
     scanSessionId: string | null,
     qrCodeData: any
   ) => {
+    // Prevenir múltiplas submissões simultâneas
+    if (isLoading) {
+      console.log('[useLeadSubmission] Já está enviando um lead, ignorando nova tentativa');
+      return null;
+    }
+
     setIsLoading(true);
 
     try {

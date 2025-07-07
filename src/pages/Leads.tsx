@@ -13,6 +13,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { useLeads, useLeadStatuses } from '@/hooks/useLeads';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
 import { useNomenclature } from '@/hooks/useNomenclature';
+import { useRealtimeLeads } from '@/hooks/useRealtimeLeads';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import StatusEditor from '@/components/StatusEditor';
@@ -30,12 +31,16 @@ const Leads = () => {
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
   const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
+  // Habilitar realtime updates
+  useRealtimeLeads();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCourse, setFilterCourse] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [isCreatingLead, setIsCreatingLead] = useState(false);
   
   const [newLead, setNewLead] = useState({
     name: '',
@@ -58,7 +63,16 @@ const Leads = () => {
       return;
     }
 
+    if (isCreatingLead) {
+      console.log('[Leads] Já está criando um lead, ignorando clique duplo');
+      return;
+    }
+
+    setIsCreatingLead(true);
+
     try {
+      console.log('[Leads] Iniciando criação de lead:', newLead);
+
       // Buscar o status "Pendente" para definir como padrão
       const defaultStatus = leadStatuses.find(status => 
         status.name.toLowerCase() === 'pendente'
@@ -75,13 +89,20 @@ const Leads = () => {
         status_id: newLead.status_id || defaultStatus?.id || null
       };
 
+      console.log('[Leads] Dados para inserção:', leadData);
+
       const { error } = await supabase
         .from('leads')
         .insert([leadData]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Leads] Erro ao criar lead:', error);
+        throw error;
+      }
 
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      console.log('[Leads] Lead criado com sucesso');
+
+      // Limpar o formulário
       setNewLead({
         name: '',
         whatsapp: '',
@@ -98,13 +119,18 @@ const Leads = () => {
         title: "Lead criado",
         description: "Lead criado com sucesso!",
       });
+
+      // Forçar atualização dos dados
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     } catch (error: any) {
-      console.error('Erro ao criar lead:', error);
+      console.error('[Leads] Erro ao criar lead:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao criar lead",
         variant: "destructive",
       });
+    } finally {
+      setIsCreatingLead(false);
     }
   };
 
@@ -246,6 +272,7 @@ const Leads = () => {
                     value={newLead.name}
                     onChange={(e) => setNewLead({...newLead, name: e.target.value})}
                     placeholder="João Silva"
+                    disabled={isCreatingLead}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -255,6 +282,7 @@ const Leads = () => {
                     value={newLead.whatsapp}
                     onChange={(e) => setNewLead({...newLead, whatsapp: e.target.value})}
                     placeholder="(82) 99999-9999"
+                    disabled={isCreatingLead}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -265,6 +293,7 @@ const Leads = () => {
                     value={newLead.email}
                     onChange={(e) => setNewLead({...newLead, email: e.target.value})}
                     placeholder="joao@email.com"
+                    disabled={isCreatingLead}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -277,6 +306,7 @@ const Leads = () => {
                       course_id: '',
                       postgraduate_course_id: ''
                     })}
+                    disabled={isCreatingLead}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
@@ -293,6 +323,7 @@ const Leads = () => {
                     <Select 
                       value={newLead.course_id} 
                       onValueChange={(value) => setNewLead({...newLead, course_id: value})}
+                      disabled={isCreatingLead}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
@@ -312,6 +343,7 @@ const Leads = () => {
                     <Select 
                       value={newLead.postgraduate_course_id} 
                       onValueChange={(value) => setNewLead({...newLead, postgraduate_course_id: value})}
+                      disabled={isCreatingLead}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={`Selecione uma ${postgraduateNomenclature.toLowerCase()}`} />
@@ -330,6 +362,7 @@ const Leads = () => {
                   <Select 
                     value={newLead.event_id} 
                     onValueChange={(value) => setNewLead({...newLead, event_id: value})}
+                    disabled={isCreatingLead}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um evento" />
@@ -344,11 +377,19 @@ const Leads = () => {
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsCreateDialogOpen(false)}
+                  disabled={isCreatingLead}
+                >
                   Cancelar
                 </Button>
-                <Button onClick={handleCreateLead} className="bg-blue-600 hover:bg-blue-700">
-                  Criar Lead
+                <Button 
+                  onClick={handleCreateLead} 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={isCreatingLead}
+                >
+                  {isCreatingLead ? 'Criando...' : 'Criar Lead'}
                 </Button>
               </div>
             </DialogContent>
