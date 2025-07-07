@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { FileText } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 import { useEvents } from '@/hooks/useEvents';
 import { useLeads } from '@/hooks/useLeads';
-import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const EventReportGenerator = () => {
   const [selectedEvent, setSelectedEvent] = useState('');
@@ -16,7 +16,6 @@ const EventReportGenerator = () => {
   
   const { data: events = [] } = useEvents();
   const { data: leads = [] } = useLeads();
-  const { data: settings = [] } = useSystemSettings();
   const { toast } = useToast();
 
   const generatePDFReport = async () => {
@@ -32,33 +31,48 @@ const EventReportGenerator = () => {
     setIsGenerating(true);
 
     try {
-      const response = await fetch('https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/generate-event-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvYnRxdWVicGNuemppc2Z0Y2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1NzcyNTMsImV4cCI6MjA2NTE1MzI1M30.GvPd5cEdgmAZG-Jsch66mdX24QNosV12Tz-F1Af93_0`
-        },
-        body: JSON.stringify({
+      console.log('[EventReportGenerator] Iniciando geração de relatório para evento:', selectedEvent);
+
+      const { data, error } = await supabase.functions.invoke('generate-event-report', {
+        body: {
           event_id: selectedEvent
-        }),
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Erro ao gerar relatório');
+      if (error) {
+        console.error('[EventReportGenerator] Erro na função:', error);
+        throw new Error(error.message || 'Erro ao gerar relatório');
       }
 
-      const htmlContent = await response.text();
-      
-      // Abrir nova janela com o relatório
+      if (!data) {
+        throw new Error('Nenhum dado retornado da função');
+      }
+
+      console.log('[EventReportGenerator] Relatório gerado com sucesso');
+
+      // Criar nova janela com o relatório HTML
       const newWindow = window.open('', '_blank');
       if (newWindow) {
-        newWindow.document.write(htmlContent);
+        newWindow.document.write(data);
         newWindow.document.close();
         
-        // Aguardar um pouco e depois imprimir
-        setTimeout(() => {
-          newWindow.print();
-        }, 1000);
+        // Aguardar carregamento e imprimir
+        newWindow.onload = () => {
+          setTimeout(() => {
+            newWindow.print();
+          }, 1000);
+        };
+      } else {
+        // Fallback: criar blob e baixar
+        const blob = new Blob([data], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-evento-${selectedEvent}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       }
 
       toast({
@@ -69,9 +83,10 @@ const EventReportGenerator = () => {
       setIsDialogOpen(false);
       setSelectedEvent('');
     } catch (error: any) {
+      console.error('[EventReportGenerator] Erro:', error);
       toast({
-        title: "Erro",
-        description: error.message || "Erro ao gerar relatório",
+        title: "Erro ao gerar relatório",
+        description: error.message || "Erro interno do servidor",
         variant: "destructive",
       });
     } finally {
@@ -115,7 +130,11 @@ const EventReportGenerator = () => {
           </div>
         </div>
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsDialogOpen(false)}
+            disabled={isGenerating}
+          >
             Cancelar
           </Button>
           <Button 
@@ -123,7 +142,14 @@ const EventReportGenerator = () => {
             disabled={isGenerating || !selectedEvent}
             className="bg-blue-600 hover:bg-blue-700"
           >
-            {isGenerating ? 'Gerando...' : 'Gerar Relatório'}
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Gerando...
+              </>
+            ) : (
+              'Gerar Relatório'
+            )}
           </Button>
         </div>
       </DialogContent>
