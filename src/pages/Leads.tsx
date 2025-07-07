@@ -60,6 +60,11 @@ const Leads = () => {
     }
 
     try {
+      // Buscar o status "Pendente" para definir como padrão
+      const defaultStatus = leadStatuses.find(status => 
+        status.name.toLowerCase() === 'pendente'
+      ) || leadStatuses[0];
+
       const leadData = {
         name: newLead.name,
         whatsapp: newLead.whatsapp.replace(/\D/g, ''),
@@ -68,7 +73,7 @@ const Leads = () => {
         course_id: newLead.course_type === 'course' && newLead.course_id ? newLead.course_id : null,
         postgraduate_course_id: newLead.course_type === 'postgraduate' && newLead.postgraduate_course_id ? newLead.postgraduate_course_id : null,
         event_id: newLead.event_id || null,
-        status_id: newLead.status_id || leadStatuses[0]?.id || null
+        status_id: newLead.status_id || defaultStatus?.id || null
       };
 
       const { error } = await supabase
@@ -108,6 +113,11 @@ const Leads = () => {
     if (!editingLead) return;
 
     try {
+      // Buscar o status "Pendente" para casos onde não há status definido
+      const defaultStatus = leadStatuses.find(status => 
+        status.name.toLowerCase() === 'pendente'
+      ) || leadStatuses[0];
+
       const updateData = {
         name: editingLead.name,
         whatsapp: editingLead.whatsapp.replace(/\D/g, ''),
@@ -116,7 +126,7 @@ const Leads = () => {
         course_id: editingLead.course_type === 'course' ? (editingLead.course_id || null) : null,
         postgraduate_course_id: editingLead.course_type === 'postgraduate' ? (editingLead.postgraduate_course_id || null) : null,
         event_id: editingLead.event_id || null,
-        status_id: editingLead.status_id || leadStatuses[0]?.id || null
+        status_id: editingLead.status_id || defaultStatus?.id || null
       };
 
       const { error } = await supabase
