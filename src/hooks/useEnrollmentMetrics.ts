@@ -7,12 +7,26 @@ export const useEnrollmentMetrics = () => {
     queryKey: ['enrollment_metrics'],
     queryFn: async () => {
       try {
+        // Buscar a configuração de status de matrícula
+        const { data: settings, error: settingsError } = await supabase
+          .from('system_settings')
+          .select('*')
+          .eq('key', 'enrollment_status_id')
+          .single();
+
+        if (settingsError && settingsError.code !== 'PGRST116') {
+          console.error('Erro ao buscar configuração:', settingsError);
+        }
+
+        // ID do status configurado (fallback para buscar por nome "matriculado")
+        const configuredStatusId = settings?.value;
+        
         // Buscar todos os leads
         const { data: allLeads, error: leadsError } = await supabase
           .from('leads')
           .select(`
             *,
-            status:lead_statuses(name),
+            status:lead_statuses(id, name),
             event:events(name)
           `);
         
@@ -27,10 +41,20 @@ export const useEnrollmentMetrics = () => {
 
         const totalLeads = allLeads?.length || 0;
         
-        // Leads matriculados (status "matriculado")
-        const enrolledLeads = allLeads?.filter(lead => 
-          lead.status?.name?.toLowerCase() === 'matriculado'
-        ) || [];
+        // Determinar quais leads são "matriculados"
+        let enrolledLeads = [];
+        
+        if (configuredStatusId) {
+          // Usar o status configurado
+          enrolledLeads = allLeads?.filter(lead => 
+            lead.status?.id === configuredStatusId
+          ) || [];
+        } else {
+          // Fallback: usar o nome "matriculado" (case insensitive)
+          enrolledLeads = allLeads?.filter(lead => 
+            lead.status?.name?.toLowerCase() === 'matriculado'
+          ) || [];
+        }
         
         const totalEnrolled = enrolledLeads.length;
         const enrollmentRate = totalLeads > 0 ? (totalEnrolled / totalLeads) * 100 : 0;

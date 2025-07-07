@@ -11,11 +11,13 @@ import WebhookSettings from '@/components/WebhookSettings';
 import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
 import NomenclatureSettings from '@/components/NomenclatureSettings';
+import EnrollmentStatusSettings from '@/components/EnrollmentStatusSettings';
 import { useNomenclature } from '@/hooks/useNomenclature';
 
 const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('webhooks');
   const [activeCourseTab, setActiveCourseTab] = useState('cursos');
+  const [activeProductTab, setActiveProductTab] = useState('cursos');
   const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   return (
@@ -81,8 +83,8 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="produtos">
-          <Tabs value={activeCourseTab} onValueChange={setActiveCourseTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={activeProductTab} onValueChange={setActiveProductTab} className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="cursos" className="flex items-center space-x-2">
                 <BookOpen className="h-4 w-4" />
                 <span>{courseNomenclature}</span>
@@ -90,6 +92,10 @@ const Settings = () => {
               <TabsTrigger value="pos" className="flex items-center space-x-2">
                 <GraduationCap className="h-4 w-4" />
                 <span>{postgraduateNomenclature}</span>
+              </TabsTrigger>
+              <TabsTrigger value="matricula" className="flex items-center space-x-2">
+                <GraduationCap className="h-4 w-4" />
+                <span>Matrícula</span>
               </TabsTrigger>
             </TabsList>
 
@@ -99,6 +105,10 @@ const Settings = () => {
 
             <TabsContent value="pos">
               <PostgraduateCourseManager />
+            </TabsContent>
+
+            <TabsContent value="matricula">
+              <EnrollmentStatusSettings />
             </TabsContent>
           </Tabs>
         </TabsContent>
