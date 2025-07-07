@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext } from 'react';
-import { useDynamicSupabase } from './useDynamicSupabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -28,11 +28,9 @@ export const useAuth = () => {
 export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = useDynamicSupabase();
 
   useEffect(() => {
-    console.log('[Auth] Domínio atual:', window.location.origin);
-    console.log('[Auth] Cliente Supabase URL:', supabase.supabaseUrl);
+    console.log('[Auth] Iniciando verificação de usuário salvo...');
     
     // Verificar se há usuário logado no localStorage
     const savedUser = localStorage.getItem('cesmac_user');
@@ -47,84 +45,78 @@ export const useAuthProvider = () => {
       }
     }
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   const login = async (username: string, password: string) => {
     try {
       console.log('[Auth] === INÍCIO DO LOGIN ===');
-      console.log('[Auth] Domínio atual:', window.location.origin);
-      console.log('[Auth] Username tentando logar:', username);
-      console.log('[Auth] Cliente Supabase URL:', supabase.supabaseUrl);
+      console.log('[Auth] Username:', username);
+      console.log('[Auth] Supabase URL:', supabase.supabaseUrl);
       
       // Teste de conectividade básica
-      console.log('[Auth] Testando conectividade...');
+      console.log('[Auth] Testando conectividade com authorized_users...');
       const { data: testData, error: testError } = await supabase
         .from('authorized_users')
         .select('username')
         .limit(1);
       
-      console.log('[Auth] Teste de conectividade:', { testData, testError });
+      console.log('[Auth] Teste de conectividade - Data:', testData);
+      console.log('[Auth] Teste de conectividade - Error:', testError);
       
       if (testError) {
         console.error('[Auth] Erro na conectividade:', testError);
-        return { success: false, error: 'Erro de conexão com o banco de dados: ' + testError.message };
+        return { success: false, error: 'Erro de conexão: ' + testError.message };
       }
       
-      // Verificar se o usuário existe
+      // Verificar se o usuário existe na tabela
       console.log('[Auth] Verificando se usuário existe...');
-      const { data: userCheck, error: userCheckError } = await supabase
+      const { data: userExists, error: userExistsError } = await supabase
         .from('authorized_users')
-        .select('username, email')
-        .eq('username', username);
+        .select('username, email, id')
+        .eq('username', username)
+        .single();
         
-      console.log('[Auth] Verificação de usuário:', { userCheck, userCheckError });
+      console.log('[Auth] Usuário existe - Data:', userExists);
+      console.log('[Auth] Usuário existe - Error:', userExistsError);
       
-      if (userCheckError) {
-        console.error('[Auth] Erro na verificação do usuário:', userCheckError);
-        return { success: false, error: 'Erro ao verificar usuário: ' + userCheckError.message };
-      }
-      
-      if (!userCheck || userCheck.length === 0) {
+      if (userExistsError || !userExists) {
         console.log('[Auth] Usuário não encontrado');
         return { success: false, error: 'Usuário não encontrado' };
       }
       
       // Chamar função RPC para verificar login
-      console.log('[Auth] Chamando verify_login com:', { p_username: username });
-      
-      const { data, error } = await (supabase as any).rpc('verify_login', {
+      console.log('[Auth] Chamando verify_login...');
+      const { data: rpcData, error: rpcError } = await supabase.rpc('verify_login', {
         p_username: username,
         p_password: password
       });
 
-      console.log('[Auth] Resposta do RPC verify_login:', { data, error });
+      console.log('[Auth] RPC Response - Data:', rpcData);
+      console.log('[Auth] RPC Response - Error:', rpcError);
 
-      if (error) {
-        console.error('[Auth] Erro na verificação RPC:', error);
-        return { success: false, error: 'Erro interno do sistema: ' + error.message };
+      if (rpcError) {
+        console.error('[Auth] Erro na função RPC:', rpcError);
+        return { success: false, error: 'Erro interno: ' + rpcError.message };
       }
 
-      console.log('[Auth] Dados retornados pelo RPC:', data);
-      console.log('[Auth] Tipo dos dados:', typeof data);
-      console.log('[Auth] É array?', Array.isArray(data));
-
-      if (data && Array.isArray(data) && data.length > 0) {
-        console.log('[Auth] Primeiro item do array:', data[0]);
+      if (rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+        const result = rpcData[0];
+        console.log('[Auth] Resultado da verificação:', result);
         
-        if (data[0].success) {
-          const userData = data[0].user_data as unknown as User;
-          console.log('[Auth] Dados do usuário extraídos:', userData);
+        if (result.success) {
+          const userData = result.user_data as User;
+          console.log('[Auth] Login bem-sucedido! Dados do usuário:', userData);
           
           setUser(userData);
           localStorage.setItem('cesmac_user', JSON.stringify(userData));
-          console.log('[Auth] === LOGIN SUCESSO ===');
+          
           return { success: true };
         } else {
-          console.log('[Auth] Login falhou - credenciais incorretas');
+          console.log('[Auth] Credenciais incorretas');
           return { success: false, error: 'Usuário ou senha incorretos' };
         }
       } else {
-        console.log('[Auth] Resposta inesperada do RPC:', data);
+        console.log('[Auth] Resposta inesperada da função RPC:', rpcData);
         return { success: false, error: 'Resposta inesperada do servidor' };
       }
     } catch (error) {
