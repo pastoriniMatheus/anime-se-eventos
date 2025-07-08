@@ -13,6 +13,7 @@ import { useLeads } from '@/hooks/useLeads';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useMessageTemplates, useMessageHistory, useCreateMessageTemplate } from '@/hooks/useMessages';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { 
   Send, 
   MessageSquare, 
@@ -43,6 +44,7 @@ const Messages = () => {
   const { data: templates = [] } = useMessageTemplates();
   const { data: messageHistory = [] } = useMessageHistory();
   const { mutate: createTemplate } = useCreateMessageTemplate();
+  const { data: settings = [] } = useSystemSettings();
   const { toast } = useToast();
 
   const getFilteredLeads = () => {
@@ -109,56 +111,139 @@ const Messages = () => {
     setIsLoading(true);
 
     try {
+      // Buscar configurações de webhook
+      const webhookSettings = settings.find(s => s.key === 'webhook_urls');
+      
+      if (!webhookSettings?.value) {
+        toast({
+          title: "Erro",
+          description: "Configurações de webhook não encontradas. Configure em Configurações > Webhooks",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const webhookUrls = typeof webhookSettings.value === 'string' 
+        ? JSON.parse(webhookSettings.value) 
+        : webhookSettings.value;
+
+      const webhookUrl = webhookUrls[messageType];
+
+      if (!webhookUrl) {
+        toast({
+          title: "Erro",
+          description: `URL do webhook ${messageType} não configurada. Configure em Configurações > Webhooks`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Enviando mensagem:', {
+        type: messageType,
+        recipients: filteredLeads.length,
+        webhookUrl
+      });
+
+      // Registrar mensagem no histórico
       const messageData = {
         type: messageType,
         filter_type: filterType,
         filter_value: filterType !== 'all' ? filterValue : null,
         recipients_count: filteredLeads.length,
         content: messageContent,
-        status: 'pending'
+        status: 'sending'
       };
 
-      // Usar tipagem any para tabela não tipada
-      const { data, error } = await (supabase as any)
+      const { data: messageRecord, error: historyError } = await (supabase as any)
         .from('message_history')
         .insert([messageData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (historyError) {
+        console.error('Erro ao salvar no histórico:', historyError);
+      }
 
-      // Chamar webhook para envio
-      const { error: webhookError } = await supabase.functions.invoke('send-webhook', {
+      // Preparar dados para webhook
+      const webhookData = {
+        type: messageType,
+        content: messageContent,
+        recipients: filteredLeads.map(lead => ({
+          id: lead.id,
+          name: lead.name,
+          whatsapp: lead.whatsapp,
+          email: lead.email
+        })),
+        filter_info: {
+          type: filterType,
+          value: filterValue,
+          total_recipients: filteredLeads.length
+        },
+        message_id: messageRecord?.id
+      };
+
+      console.log('Enviando para webhook:', {
+        webhook_url: webhookUrl,
+        webhook_data: webhookData
+      });
+
+      // Chamar edge function para enviar webhook
+      const { data: webhookResponse, error: webhookError } = await supabase.functions.invoke('send-webhook', {
         body: {
-          messageId: data.id,
-          type: messageType,
-          content: messageContent,
-          recipients: filteredLeads.map(lead => ({
-            id: lead.id,
-            name: lead.name,
-            whatsapp: lead.whatsapp,
-            email: lead.email
-          }))
+          webhook_url: webhookUrl,
+          webhook_data: webhookData
         }
       });
 
       if (webhookError) {
         console.error('Erro no webhook:', webhookError);
+        
+        // Atualizar status para falhou
+        if (messageRecord?.id) {
+          await (supabase as any)
+            .from('message_history')
+            .update({ 
+              status: 'failed',
+              webhook_response: webhookError.message || 'Erro no webhook'
+            })
+            .eq('id', messageRecord.id);
+        }
+
+        toast({
+          title: "Erro no envio",
+          description: webhookError.message || "Erro ao chamar webhook. Verifique as configurações.",
+          variant: "destructive",
+        });
+      } else {
+        console.log('Webhook executado com sucesso:', webhookResponse);
+        
+        // Atualizar status para enviado
+        if (messageRecord?.id) {
+          await (supabase as any)
+            .from('message_history')
+            .update({ 
+              status: 'sent',
+              webhook_response: JSON.stringify(webhookResponse)
+            })
+            .eq('id', messageRecord.id);
+        }
+
+        toast({
+          title: "Mensagem enviada",
+          description: `Mensagem ${messageType} enviada para ${filteredLeads.length} lead(s)`,
+        });
+
+        setMessageContent('');
+        setSelectedTemplate('');
       }
 
-      toast({
-        title: "Mensagem enviada",
-        description: `Mensagem ${messageType} enviada para ${filteredLeads.length} lead(s)`,
-      });
-
-      setMessageContent('');
-      setSelectedTemplate('');
-
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
+      console.error('Erro geral ao enviar mensagem:', error);
       toast({
         title: "Erro",
-        description: "Erro ao enviar mensagem. Tente novamente.",
+        description: "Erro ao enviar mensagem. Verifique as configurações e tente novamente.",
         variant: "destructive",
       });
     } finally {
