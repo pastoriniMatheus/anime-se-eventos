@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { usePostgraduateCourses } from '@/hooks/usePostgraduateCourses';
+import { useNomenclature } from '@/hooks/useNomenclature';
 
 interface ContactExporterProps {
   leads: any[];
@@ -20,6 +21,7 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
   const { data: courses = [] } = useCourses();
   const { data: events = [] } = useEvents();
   const { data: postgraduateCourses = [] } = usePostgraduateCourses();
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   const [isOpen, setIsOpen] = useState(false);
   const [filterType, setFilterType] = useState('all');
@@ -149,7 +151,7 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
               <SelectContent>
                 <SelectItem value="all">Todos os contatos</SelectItem>
                 <SelectItem value="event">Por evento</SelectItem>
-                <SelectItem value="course">Por curso</SelectItem>
+                <SelectItem value="course">Por {courseNomenclature.toLowerCase()}</SelectItem>
                 <SelectItem value="date">Por data</SelectItem>
               </SelectContent>
             </Select>
@@ -173,20 +175,20 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
 
           {filterType === 'course' && (
             <div className="grid gap-2">
-              <Label htmlFor="course">Curso</Label>
+              <Label htmlFor="course">{courseNomenclature.slice(0, -1)}</Label>
               <Select value={selectedValue} onValueChange={setSelectedValue}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um curso" />
+                  <SelectValue placeholder={`Selecione um ${courseNomenclature.toLowerCase().slice(0, -1)}`} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectLabel>Cursos de Graduação</SelectLabel>
+                    <SelectLabel>{courseNomenclature}</SelectLabel>
                     {courses.map((course: any) => (
                       <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                     ))}
                   </SelectGroup>
                   <SelectGroup>
-                    <SelectLabel>Pós-graduação</SelectLabel>
+                    <SelectLabel>{postgraduateNomenclature}</SelectLabel>
                     {postgraduateCourses.map((course: any) => (
                       <SelectItem key={course.id} value={course.id}>{course.name}</SelectItem>
                     ))}
@@ -225,7 +227,7 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
               `Contatos do evento: ${leads.filter(l => l.event_id === selectedValue).length}`
             }
             {filterType === 'course' && selectedValue && 
-              `Contatos do curso: ${leads.filter(l => l.course_id === selectedValue || l.postgraduate_course_id === selectedValue).length}`
+              `Contatos do ${courseNomenclature.toLowerCase().slice(0, -1)}: ${leads.filter(l => l.course_id === selectedValue || l.postgraduate_course_id === selectedValue).length}`
             }
             {filterType === 'date' && startDate && endDate && (() => {
               const count = leads.filter(l => {
