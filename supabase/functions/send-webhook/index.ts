@@ -55,9 +55,12 @@ serve(async (req) => {
       });
     }
 
-    console.log('📤 ENVIANDO WEBHOOK PARA URL EXATA:', webhook_url);
-    console.log('📋 Tipo de mensagem:', webhook_data.type);
-    console.log('📋 Número de destinatários:', webhook_data.recipients?.length || 0);
+    console.log('📤 URL DO WEBHOOK RECEBIDA:', webhook_url);
+    console.log('📋 Dados para envio:', {
+      type: webhook_data.type,
+      recipients_count: webhook_data.recipients?.length || 0,
+      has_content: !!webhook_data.content
+    });
 
     // Validar se a URL é válida
     let validUrl;
@@ -76,30 +79,38 @@ serve(async (req) => {
       });
     }
 
-    // Enviar webhook com timeout e headers adequados - GARANTINDO QUE É POST
+    // Preparar dados para envio - formato mais simples para o n8n
+    const dataToSend = {
+      tipo: webhook_data.type,
+      mensagem: webhook_data.content,
+      destinatarios: webhook_data.recipients || [],
+      total_destinatarios: webhook_data.recipients?.length || 0,
+      filtro: webhook_data.filter_info || {},
+      message_id: webhook_data.message_id
+    };
+
+    console.log('🚀 ENVIANDO POST PARA URL:', webhook_url);
+    console.log('📦 Dados sendo enviados:', JSON.stringify(dataToSend, null, 2));
+
+    // Enviar webhook com timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      console.log('🚀 FAZENDO REQUISIÇÃO POST PARA URL:', webhook_url);
-      console.log('📦 Dados sendo enviados via POST:', JSON.stringify(webhook_data, null, 2));
-
       const response = await fetch(webhook_url, {
-        method: 'POST', // EXPLICITAMENTE DEFINIDO COMO POST
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'Supabase-Edge-Function/1.0',
-          'X-Source': 'lead-messaging-system',
-          'X-HTTP-Method': 'POST' // Header adicional para garantir
+          'User-Agent': 'Supabase-Lead-System/1.0'
         },
-        body: JSON.stringify(webhook_data),
+        body: JSON.stringify(dataToSend),
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
-      let responseText;
+      let responseText = '';
       try {
         responseText = await response.text();
       } catch (textError) {
@@ -107,40 +118,37 @@ serve(async (req) => {
         responseText = 'Erro ao ler resposta do webhook';
       }
       
-      console.log('📥 RESPOSTA COMPLETA DO WEBHOOK (POST):', {
-        url: webhook_url,
-        method: 'POST',
+      console.log('📥 RESPOSTA DO WEBHOOK:', {
         status: response.status,
         statusText: response.statusText,
         headers: Object.fromEntries(response.headers.entries()),
-        body: responseText
+        body: responseText,
+        url: webhook_url
       });
 
       if (!response.ok) {
-        console.error('❌ WEBHOOK RETORNOU ERRO PARA POST:', {
+        console.error('❌ WEBHOOK RETORNOU ERRO:', {
           status: response.status,
           statusText: response.statusText,
           body: responseText,
-          url: webhook_url,
-          method: 'POST'
+          url: webhook_url
         });
         
-        // Mensagens de erro mais específicas
-        let errorMessage = `Webhook POST retornou ${response.status} (${response.statusText})`;
+        let errorMessage = `Webhook retornou ${response.status}`;
         let errorDetails = responseText;
         
         if (response.status === 404) {
-          errorMessage = 'Webhook não encontrado (404) - POST';
-          errorDetails = 'Verifique se a URL está correta e se o endpoint aceita POST no n8n';
+          errorMessage = 'Webhook não encontrado (404)';
+          errorDetails = 'Verifique se a URL está correta: ' + webhook_url;
         } else if (response.status === 405) {
-          errorMessage = 'Método POST não permitido (405)';
-          errorDetails = 'O webhook não aceita requisições POST. Verifique a configuração do n8n';
-        } else if (response.status === 401) {
-          errorMessage = 'Erro de autorização (401) - POST';
-          errorDetails = 'Verifique as credenciais de acesso ao webhook';
+          errorMessage = 'Método não permitido (405)';
+          errorDetails = 'O webhook não aceita POST. URL: ' + webhook_url;
+        } else if (response.status === 400) {
+          errorMessage = 'Dados inválidos (400)';
+          errorDetails = 'O webhook rejeitou os dados enviados';
         } else if (response.status === 500) {
-          errorMessage = 'Erro interno do servidor (500) - POST';
-          errorDetails = 'Problema no n8n ou no workflow';
+          errorMessage = 'Erro no servidor do webhook (500)';
+          errorDetails = 'Problema interno no n8n';
         }
         
         return new Response(JSON.stringify({
@@ -148,15 +156,14 @@ serve(async (req) => {
           details: errorDetails,
           webhook_response: responseText,
           status_code: response.status,
-          webhook_url: webhook_url,
-          method_used: 'POST'
+          webhook_url: webhook_url
         }), { 
           status: response.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      console.log('✅ WEBHOOK POST EXECUTADO COM SUCESSO');
+      console.log('✅ WEBHOOK EXECUTADO COM SUCESSO');
       
       return new Response(JSON.stringify({
         success: true,
@@ -164,8 +171,7 @@ serve(async (req) => {
         statusText: response.statusText,
         response: responseText,
         webhook_url: webhook_url,
-        method_used: 'POST',
-        message: 'Webhook POST sent successfully',
+        message: 'Webhook sent successfully',
         recipients_count: webhook_data.recipients?.length || 0
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -175,37 +181,32 @@ serve(async (req) => {
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       
-      let errorMessage = 'Erro desconhecido no webhook POST';
+      console.error('❌ ERRO AO CHAMAR WEBHOOK:', {
+        error: fetchError,
+        message: fetchError.message,
+        url: webhook_url
+      });
+      
+      let errorMessage = 'Erro ao conectar com o webhook';
       let errorDetails = {};
       
       if (fetchError.name === 'AbortError') {
-        errorMessage = 'Timeout: O webhook POST demorou mais de 30 segundos para responder';
-        errorDetails = { timeout: true, duration: '30s', method: 'POST' };
+        errorMessage = 'Timeout: Webhook demorou mais de 30 segundos';
+        errorDetails = { timeout: true, duration: '30s' };
       } else if (fetchError.message?.includes('fetch')) {
-        errorMessage = 'Não foi possível conectar ao webhook via POST. Verifique se a URL está correta e acessível';
-        errorDetails = { connection_error: true, url: webhook_url, method: 'POST' };
+        errorMessage = 'Não foi possível conectar ao webhook';
+        errorDetails = { connection_error: true, url: webhook_url };
       } else {
-        errorMessage = fetchError.message || 'Erro na comunicação POST com o webhook';
         errorDetails = { 
           error_type: fetchError.name || 'UnknownError',
-          original_message: fetchError.message,
-          method: 'POST'
+          original_message: fetchError.message
         };
       }
-      
-      console.error('❌ ERRO DETALHADO NO WEBHOOK POST:', {
-        error: fetchError,
-        message: errorMessage,
-        details: errorDetails,
-        webhook_url: webhook_url,
-        method: 'POST'
-      });
       
       return new Response(JSON.stringify({
         error: errorMessage,
         details: errorDetails,
-        webhook_url: webhook_url,
-        method_attempted: 'POST'
+        webhook_url: webhook_url
       }), { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -213,17 +214,16 @@ serve(async (req) => {
     }
 
   } catch (error: any) {
-    console.error('💥 ERRO GERAL NA EDGE FUNCTION (POST):', {
+    console.error('💥 ERRO GERAL NA EDGE FUNCTION:', {
       error: error,
       message: error.message,
       stack: error.stack
     });
     
     return new Response(JSON.stringify({
-      error: 'Webhook POST execution failed',
+      error: 'Webhook execution failed',
       details: error.message,
-      timestamp: new Date().toISOString(),
-      method_attempted: 'POST'
+      timestamp: new Date().toISOString()
     }), { 
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
