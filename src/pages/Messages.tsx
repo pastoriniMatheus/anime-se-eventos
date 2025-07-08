@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useMessageTemplates, useMessageHistory, useCreateMessageTemplate } from '@/hooks/useMessages';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Send, 
   MessageSquare, 
@@ -26,13 +28,14 @@ import {
   History,
   Filter,
   Eye,
-  Save
+  Save,
+  Tag
 } from 'lucide-react';
 
 const Messages = () => {
   const [messageContent, setMessageContent] = useState('');
   const [messageType, setMessageType] = useState<'whatsapp' | 'email' | 'sms'>('whatsapp');
-  const [filterType, setFilterType] = useState<'all' | 'course' | 'event'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'course' | 'event' | 'status'>('all');
   const [filterValue, setFilterValue] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
@@ -47,6 +50,20 @@ const Messages = () => {
   const { data: settings = [] } = useSystemSettings();
   const { toast } = useToast();
 
+  // Buscar status de leads
+  const { data: leadStatuses = [] } = useQuery({
+    queryKey: ['lead_statuses'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lead_statuses')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   const getFilteredLeads = () => {
     let filtered = leads;
 
@@ -54,6 +71,8 @@ const Messages = () => {
       filtered = leads.filter(lead => lead.course_id === filterValue);
     } else if (filterType === 'event' && filterValue) {
       filtered = leads.filter(lead => lead.event_id === filterValue);
+    } else if (filterType === 'status' && filterValue) {
+      filtered = leads.filter(lead => lead.status_id === filterValue);
     }
 
     return filtered;
@@ -443,7 +462,7 @@ const Messages = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Filtrar por</Label>
-                  <Select value={filterType} onValueChange={(value: 'all' | 'course' | 'event') => setFilterType(value)}>
+                  <Select value={filterType} onValueChange={(value: 'all' | 'course' | 'event' | 'status') => setFilterType(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -464,6 +483,12 @@ const Messages = () => {
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
                           Por evento
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="status">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-4 h-4" />
+                          Por status
                         </div>
                       </SelectItem>
                     </SelectContent>
@@ -499,6 +524,30 @@ const Messages = () => {
                         {events.map((event) => (
                           <SelectItem key={event.id} value={event.id}>
                             {event.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {filterType === 'status' && (
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={filterValue} onValueChange={setFilterValue}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {leadStatuses.map((status) => (
+                          <SelectItem key={status.id} value={status.id}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: status.color }}
+                              />
+                              {status.name}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
