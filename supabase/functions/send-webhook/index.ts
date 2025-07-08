@@ -79,29 +79,24 @@ serve(async (req) => {
       });
     }
 
-    // Preparar dados no formato que o n8n espera - estrutura mais simples
+    // Preparar dados em formato ainda mais simples para o n8n
     const dataToSend = {
-      message: {
-        type: webhook_data.type,
-        content: webhook_data.content,
-        message_id: webhook_data.message_id
-      },
+      type: webhook_data.type,
+      content: webhook_data.content,
       recipients: webhook_data.recipients?.map(recipient => ({
-        name: recipient.name || '',
+        name: recipient.name || 'Nome não informado',
         whatsapp: recipient.whatsapp || '',
         email: recipient.email || ''
       })) || [],
-      metadata: {
-        total_recipients: webhook_data.recipients?.length || 0,
-        filter: webhook_data.filter_info || {},
-        timestamp: new Date().toISOString()
-      }
+      total_recipients: webhook_data.recipients?.length || 0,
+      message_id: webhook_data.message_id || null,
+      timestamp: new Date().toISOString()
     };
 
     console.log('🚀 ENVIANDO POST PARA URL:', webhook_url);
     console.log('📦 Dados sendo enviados:', JSON.stringify(dataToSend, null, 2));
 
-    // Enviar webhook com timeout
+    // Enviar webhook com timeout e headers específicos
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -111,7 +106,8 @@ serve(async (req) => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'Supabase-Lead-System/1.0'
+          'User-Agent': 'Supabase-Lead-System/1.0',
+          'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify(dataToSend),
         signal: controller.signal
@@ -119,22 +115,18 @@ serve(async (req) => {
 
       clearTimeout(timeoutId);
 
+      console.log('📥 STATUS DA RESPOSTA:', response.status);
+      console.log('📥 HEADERS DA RESPOSTA:', Object.fromEntries(response.headers.entries()));
+
       let responseText = '';
       try {
         responseText = await response.text();
+        console.log('📥 CORPO DA RESPOSTA:', responseText);
       } catch (textError) {
         console.error('❌ Erro ao ler resposta:', textError);
         responseText = 'Erro ao ler resposta do webhook';
       }
       
-      console.log('📥 RESPOSTA DO WEBHOOK:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        body: responseText,
-        url: webhook_url
-      });
-
       if (!response.ok) {
         console.error('❌ WEBHOOK RETORNOU ERRO:', {
           status: response.status,
@@ -143,7 +135,7 @@ serve(async (req) => {
           url: webhook_url
         });
         
-        let errorMessage = `Webhook retornou ${response.status}`;
+        let errorMessage = `Webhook retornou status ${response.status}`;
         let errorDetails = responseText;
         
         if (response.status === 404) {
@@ -154,10 +146,10 @@ serve(async (req) => {
           errorDetails = 'O webhook não aceita POST. URL: ' + webhook_url;
         } else if (response.status === 400) {
           errorMessage = 'Dados inválidos (400)';
-          errorDetails = 'O webhook rejeitou os dados enviados';
+          errorDetails = 'O webhook rejeitou os dados enviados: ' + responseText;
         } else if (response.status === 500) {
-          errorMessage = 'Erro no servidor do webhook (500)';
-          errorDetails = 'Problema interno no n8n: ' + responseText;
+          errorMessage = 'Erro interno do servidor (500)';
+          errorDetails = 'Problema no n8n: ' + responseText;
         }
         
         return new Response(JSON.stringify({
@@ -165,9 +157,10 @@ serve(async (req) => {
           details: errorDetails,
           webhook_response: responseText,
           status_code: response.status,
-          webhook_url: webhook_url
+          webhook_url: webhook_url,
+          sent_data: dataToSend
         }), { 
-          status: response.status,
+          status: 422, // Retornando 422 ao invés do status original para não quebrar o frontend
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -193,11 +186,12 @@ serve(async (req) => {
       console.error('❌ ERRO AO CHAMAR WEBHOOK:', {
         error: fetchError,
         message: fetchError.message,
+        name: fetchError.name,
         url: webhook_url
       });
       
       let errorMessage = 'Erro ao conectar com o webhook';
-      let errorDetails = {};
+      let errorDetails: any = {};
       
       if (fetchError.name === 'AbortError') {
         errorMessage = 'Timeout: Webhook demorou mais de 30 segundos';
@@ -217,7 +211,7 @@ serve(async (req) => {
         details: errorDetails,
         webhook_url: webhook_url
       }), { 
-        status: 500,
+        status: 422, // Retornando 422 para não quebrar o frontend
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
