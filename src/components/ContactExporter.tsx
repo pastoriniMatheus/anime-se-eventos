@@ -151,7 +151,7 @@ const ContactExporter = ({ leads }: ContactExporterProps) => {
               <SelectContent>
                 <SelectItem value="all">Todos os contatos</SelectItem>
                 <SelectItem value="event">Por evento</SelectItem>
-                <SelectItem value="course">Por {courseNomenclature.toLowerCase()}</SelectItem>
+                <SelectItem value="course">Por {courseNomenclature.toLowerCase().slice(0, -1)}</SelectItem>
                 <SelectItem value="date">Por data</SelectItem>
               </SelectContent>
             </Select>
