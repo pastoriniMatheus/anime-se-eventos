@@ -79,14 +79,23 @@ serve(async (req) => {
       });
     }
 
-    // Preparar dados para envio - formato mais simples para o n8n
+    // Preparar dados no formato que o n8n espera - estrutura mais simples
     const dataToSend = {
-      tipo: webhook_data.type,
-      mensagem: webhook_data.content,
-      destinatarios: webhook_data.recipients || [],
-      total_destinatarios: webhook_data.recipients?.length || 0,
-      filtro: webhook_data.filter_info || {},
-      message_id: webhook_data.message_id
+      message: {
+        type: webhook_data.type,
+        content: webhook_data.content,
+        message_id: webhook_data.message_id
+      },
+      recipients: webhook_data.recipients?.map(recipient => ({
+        name: recipient.name || '',
+        whatsapp: recipient.whatsapp || '',
+        email: recipient.email || ''
+      })) || [],
+      metadata: {
+        total_recipients: webhook_data.recipients?.length || 0,
+        filter: webhook_data.filter_info || {},
+        timestamp: new Date().toISOString()
+      }
     };
 
     console.log('🚀 ENVIANDO POST PARA URL:', webhook_url);
@@ -148,7 +157,7 @@ serve(async (req) => {
           errorDetails = 'O webhook rejeitou os dados enviados';
         } else if (response.status === 500) {
           errorMessage = 'Erro no servidor do webhook (500)';
-          errorDetails = 'Problema interno no n8n';
+          errorDetails = 'Problema interno no n8n: ' + responseText;
         }
         
         return new Response(JSON.stringify({
