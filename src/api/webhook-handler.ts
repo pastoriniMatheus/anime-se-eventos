@@ -10,8 +10,15 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
     'Content-Type': 'application/json'
   };
 
+  console.log('🔄 Webhook handler chamado:', {
+    method: request.method,
+    url: request.url,
+    headers: Object.fromEntries(request.headers.entries())
+  });
+
   // Handle CORS preflight requests
   if (request.method === 'OPTIONS') {
+    console.log('✅ Respondendo CORS preflight');
     return new Response(null, { 
       status: 200,
       headers: corsHeaders 
@@ -20,8 +27,9 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
 
   try {
     if (request.method !== 'POST') {
+      console.log('❌ Método não permitido:', request.method);
       return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
+        JSON.stringify({ error: 'Method not allowed, only POST is accepted' }),
         { 
           status: 405, 
           headers: corsHeaders
@@ -29,14 +37,42 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
       );
     }
 
-    const body = await request.json();
-    const { delivery_code, lead_identifier, status = 'delivered' } = body;
-
-    if (!delivery_code || !lead_identifier) {
+    // Ler o body da requisição
+    let body;
+    try {
+      const requestText = await request.text();
+      console.log('📥 Body recebido (raw):', requestText);
+      
+      if (!requestText.trim()) {
+        throw new Error('Body vazio');
+      }
+      
+      body = JSON.parse(requestText);
+      console.log('📋 Body parseado:', body);
+    } catch (parseError) {
+      console.error('❌ Erro ao parsear JSON:', parseError);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'delivery_code and lead_identifier are required' 
+          error: 'Invalid JSON in request body',
+          details: (parseError as Error).message
+        }),
+        { 
+          status: 400, 
+          headers: corsHeaders
+        }
+      );
+    }
+
+    const { delivery_code, lead_identifier, status = 'delivered' } = body;
+
+    if (!delivery_code || !lead_identifier) {
+      console.log('❌ Campos obrigatórios faltando:', { delivery_code: !!delivery_code, lead_identifier: !!lead_identifier });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'delivery_code and lead_identifier are required',
+          received: { delivery_code, lead_identifier, status }
         }),
         { 
           status: 400, 
@@ -65,7 +101,9 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Erro ao processar webhook: ' + error.message 
+          error: 'Erro ao processar webhook na edge function',
+          details: error.message,
+          edge_function_error: error
         }),
         { 
           status: 500, 
@@ -77,7 +115,12 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
     console.log('✅ Webhook processado com sucesso:', data);
 
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({
+        success: true,
+        message: 'Webhook processado com sucesso',
+        data: data,
+        processed_at: new Date().toISOString()
+      }),
       { 
         status: 200, 
         headers: corsHeaders
@@ -89,7 +132,9 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Erro interno do servidor: ' + (error as Error).message 
+        error: 'Erro interno do servidor',
+        details: (error as Error).message,
+        timestamp: new Date().toISOString()
       }),
       { 
         status: 500, 
