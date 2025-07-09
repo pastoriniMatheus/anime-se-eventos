@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { getCurrentSupabaseClient } from '@/utils/supabaseClientUpdater';
 
 export const handleDeliveryWebhook = async (request: Request): Promise<Response> => {
   const corsHeaders = {
@@ -26,6 +26,9 @@ export const handleDeliveryWebhook = async (request: Request): Promise<Response>
   try {
     const body = await request.json();
     console.log('Webhook delivery recebido:', body);
+
+    // Usar cliente dinâmico baseado na configuração atual
+    const supabase = getCurrentSupabaseClient();
 
     // Chamar a edge function do Supabase
     const { data, error } = await supabase.functions.invoke('message-delivery-webhook', {
