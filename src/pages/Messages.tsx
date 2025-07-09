@@ -178,6 +178,7 @@ const Messages = () => {
                       <SelectItem value="all">Todos os Leads</SelectItem>
                       <SelectItem value="course">Por Curso</SelectItem>
                       <SelectItem value="event">Por Evento</SelectItem>
+                      <SelectItem value="status">Por Status</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -185,11 +186,15 @@ const Messages = () => {
                 {filterType !== 'all' && (
                   <div className="space-y-2">
                     <Label htmlFor="filterValue">
-                      {filterType === 'course' ? 'Curso' : 'Evento'}
+                      {filterType === 'course' ? 'Curso' : 
+                       filterType === 'event' ? 'Evento' : 'Status'}
                     </Label>
                     <Select value={filterValue} onValueChange={setFilterValue}>
                       <SelectTrigger>
-                        <SelectValue placeholder={`Selecione um ${filterType === 'course' ? 'curso' : 'evento'}`} />
+                        <SelectValue placeholder={`Selecione um ${
+                          filterType === 'course' ? 'curso' : 
+                          filterType === 'event' ? 'evento' : 'status'
+                        }`} />
                       </SelectTrigger>
                       <SelectContent>
                         {filterType === 'course' ? 
@@ -198,11 +203,20 @@ const Messages = () => {
                               {course.name}
                             </SelectItem>
                           )) :
+                          filterType === 'event' ?
                           events?.map((event: any) => (
                             <SelectItem key={event.id} value={event.id}>
                               {event.name}
                             </SelectItem>
-                          ))
+                          )) :
+                          leads?.map((lead: any) => lead.status_id).filter((v, i, a) => a.indexOf(v) === i).map((statusId: string) => {
+                            const lead = leads.find((l: any) => l.status_id === statusId);
+                            return lead ? (
+                              <SelectItem key={statusId} value={statusId}>
+                                {lead.lead_statuses?.name || 'Status não definido'}
+                              </SelectItem>
+                            ) : null;
+                          })
                         }
                       </SelectContent>
                     </Select>

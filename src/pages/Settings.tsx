@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe, Type } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe, Type, Code, ExternalLink } from 'lucide-react';
 import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
@@ -19,6 +20,8 @@ const Settings = () => {
   const [activeCourseTab, setActiveCourseTab] = useState('cursos');
   const [activeProductTab, setActiveProductTab] = useState('cursos');
   const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
+
+  const baseUrl = window.location.origin;
 
   return (
     <div className="p-6 space-y-6">
@@ -118,16 +121,213 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Globe className="h-5 w-5" />
-                <span>API</span>
+                <span>Documentação da API</span>
               </CardTitle>
               <CardDescription>
-                Configure as integrações via API
+                Endpoints disponíveis no sistema e como utilizá-los
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Configurações da API em breve...
-              </p>
+            <CardContent className="space-y-6">
+              
+              {/* Endpoints de Leads */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Endpoints de Leads</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-green-50 text-green-700">POST</Badge>
+                      <code className="text-sm">/functions/v1/lead-capture</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Captura de leads via formulário</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "name": "Nome do Lead",
+  "email": "email@exemplo.com",
+  "whatsapp": "+5511999999999",
+  "course_id": "uuid-do-curso",
+  "event_id": "uuid-do-evento"
+}`}</pre>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">POST</Badge>
+                      <code className="text-sm">/functions/v1/lead-status-callback</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Webhook para atualização de status de leads</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "lead_id": "uuid-do-lead",
+  "status_id": "uuid-do-status",
+  "notes": "Observações opcionais"
+}`}</pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Endpoints de WhatsApp */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Endpoints de WhatsApp</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-green-50 text-green-700">POST</Badge>
+                      <code className="text-sm">/functions/v1/validate-whatsapp</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Validação de números do WhatsApp</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "whatsapp": "+5511999999999"
+}`}</pre>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">POST</Badge>
+                      <code className="text-sm">/functions/v1/whatsapp-validation-callback</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Callback para resultado da validação do WhatsApp</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "whatsapp": "+5511999999999",
+  "status": "valid|invalid",
+  "message": "Resultado da validação"
+}`}</pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Endpoints de Mensagens */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Endpoints de Mensagens</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700">POST</Badge>
+                      <code className="text-sm">{baseUrl}/api/message-delivery-webhook</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Confirmação de entrega de mensagens (Endpoint Dinâmico)</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "delivery_code": "MSG-1234567890-abc123",
+  "lead_identifier": "email@exemplo.com",
+  "status": "delivered"
+}`}</pre>
+                  </div>
+                  <div className="bg-blue-50 p-3 rounded text-sm mt-2">
+                    <strong>Observação:</strong> Este endpoint é dinâmico e se adapta automaticamente ao domínio da aplicação. 
+                    Internamente redireciona para a Edge Function do Supabase.
+                  </div>
+                </div>
+              </div>
+
+              {/* Endpoints de QR Code */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Endpoints de QR Code</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700">GET</Badge>
+                      <code className="text-sm">/functions/v1/qr-redirect/:tracking_id</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Redirecionamento de QR Codes com tracking</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Parâmetros:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">tracking_id: ID único do QR Code</pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Endpoints de Relatórios */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Endpoints de Relatórios</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700">POST</Badge>
+                      <code className="text-sm">/functions/v1/generate-event-report</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Geração de relatórios de eventos</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "event_id": "uuid-do-evento",
+  "format": "pdf|csv|json"
+}`}</pre>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700">GET</Badge>
+                      <code className="text-sm">/functions/v1/database-export</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Exportação completa do banco de dados</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Query Params:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">format=json|csv</pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Webhooks Gerais */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Webhooks Gerais</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700">POST</Badge>
+                      <code className="text-sm">/functions/v1/send-webhook</code>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Envio de webhooks personalizados</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "url": "https://exemplo.com/webhook",
+  "method": "POST",
+  "headers": {},
+  "body": {}
+}`}</pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informações Adicionais */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <h4 className="font-semibold text-blue-800">Informações Importantes</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• Todos os endpoints requerem autenticação via API Key no header <code>apikey</code></li>
+                  <li>• Endpoints dinâmicos se adaptam automaticamente ao domínio da aplicação</li>
+                  <li>• Respostas sempre em formato JSON</li>
+                  <li>• Rate limiting aplicado: 60 requests por minuto por IP</li>
+                  <li>• Logs de todas as requisições são mantidos por 30 dias</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
