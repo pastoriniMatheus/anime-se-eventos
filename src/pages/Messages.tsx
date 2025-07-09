@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -624,12 +625,14 @@ const Messages = () => {
                       <SelectContent>
                         {leadStatuses.map((status) => (
                           <SelectItem key={status.id} value={status.id}>
-                            <div 
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: status.color }}
-                            />
-                            {status.name}
-                          </div>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: status.color }}
+                              />
+                              {status.name}
+                            </div>
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
