@@ -16,7 +16,6 @@ import LeadForm from "./pages/LeadForm";
 import Apresentacao from "./pages/Apresentacao";
 import SecretInstall from "./pages/SecretInstall";
 import NotFound from "./pages/NotFound";
-import MessageDeliveryWebhook from "./pages/MessageDeliveryWebhook";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +38,6 @@ const App = () => (
             <Route path="/evento/:eventId" element={<LeadForm />} />
             <Route path="/apresentacao/:eventId" element={<Apresentacao />} />
             <Route path="/secret-install" element={<SecretInstall />} />
-            <Route path="/api/message-delivery-webhook" element={<MessageDeliveryWebhook />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

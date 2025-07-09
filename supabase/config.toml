@@ -56,6 +56,9 @@ verify_jwt = false
 [functions.message-delivery-proxy]
 verify_jwt = false
 
+[functions.message-delivery-webhook-endpoint]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_worker"
 inspector_port = 8083

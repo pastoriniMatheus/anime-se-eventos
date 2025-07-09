@@ -1,23 +1,22 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Handler para processar webhooks de entrega de mensagem
-export const handleMessageDeliveryWebhook = async (request: Request): Promise<Response> => {
-  // Configurar CORS
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Content-Type': 'application/json'
-  };
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
+}
 
-  console.log('🔄 Webhook handler chamado:', {
-    method: request.method,
-    url: request.url,
-    headers: Object.fromEntries(request.headers.entries())
+serve(async (req) => {
+  console.log('🔄 Webhook endpoint chamado:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
   });
 
   // Handle CORS preflight requests
-  if (request.method === 'OPTIONS') {
+  if (req.method === 'OPTIONS') {
     console.log('✅ Respondendo CORS preflight');
     return new Response(null, { 
       status: 200,
@@ -26,8 +25,8 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
   }
 
   try {
-    if (request.method !== 'POST') {
-      console.log('❌ Método não permitido:', request.method);
+    if (req.method !== 'POST') {
+      console.log('❌ Método não permitido:', req.method);
       return new Response(
         JSON.stringify({ error: 'Method not allowed, only POST is accepted' }),
         { 
@@ -40,7 +39,7 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
     // Ler o body da requisição
     let body;
     try {
-      const requestText = await request.text();
+      const requestText = await req.text();
       console.log('📥 Body recebido (raw):', requestText);
       
       if (!requestText.trim()) {
@@ -81,29 +80,30 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
       );
     }
 
-    console.log('🔄 Processando confirmação de entrega via API handler:', {
+    console.log('🔄 Processando confirmação de entrega:', {
       delivery_code,
       lead_identifier,
       status
     });
 
-    // Chamar a edge function do Supabase para processar a confirmação
-    const { data, error } = await supabase.functions.invoke('message-delivery-proxy', {
-      body: {
-        delivery_code,
-        lead_identifier,
-        status
-      }
-    });
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Chamar a função do banco para confirmar a entrega
+    const { data, error } = await supabaseClient.rpc('confirm_message_delivery', {
+      p_delivery_code: delivery_code,
+      p_lead_identifier: lead_identifier,
+      p_status: status
+    })
 
     if (error) {
-      console.error('❌ Erro na Edge Function:', error);
+      console.error('❌ Erro na função do banco:', error);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Erro ao processar webhook na edge function',
-          details: error.message,
-          edge_function_error: error
+          error: 'Database error: ' + error.message 
         }),
         { 
           status: 500, 
@@ -128,7 +128,7 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
     );
 
   } catch (error) {
-    console.error('💥 Erro inesperado no webhook handler:', error);
+    console.error('💥 Erro inesperado no webhook endpoint:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
@@ -142,4 +142,4 @@ export const handleMessageDeliveryWebhook = async (request: Request): Promise<Re
       }
     );
   }
-};
+})
