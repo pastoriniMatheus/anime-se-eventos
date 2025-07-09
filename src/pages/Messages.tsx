@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -139,15 +140,15 @@ const Messages = () => {
         return;
       }
 
-      // Criar histórico da mensagem
+      // Criar histórico da mensagem - corrigindo o problema do filter_value
       console.log('💾 Criando histórico da mensagem...');
       const { data: messageHistoryData, error: messageError } = await (supabase as any)
         .from('message_history')
         .insert([{
           type: messageType,
           content: messageContent,
-          filter_type: filterType,
-          filter_value: filterValue,
+          filter_type: filterType === 'all' ? null : filterType, // Não salvar 'all' como filter_type
+          filter_value: filterType === 'all' ? null : filterValue, // Não salvar filter_value se for 'all'
           recipients_count: filteredLeads.length,
           status: 'sending'
         }])
@@ -186,25 +187,25 @@ const Messages = () => {
           email: lead.email,
           whatsapp: lead.whatsapp
         })),
-        message_id: messageHistoryData.id
+        message_id: messageHistoryData.id,
+        delivery_code: messageHistoryData.delivery_code // Incluindo o código de entrega
       };
 
       console.log('📡 Chamando edge function send-webhook...');
       console.log('📦 Dados a serem enviados:', {
         webhook_url: webhookUrl,
         recipients_count: webhookData.recipients.length,
-        message_type: messageType
+        message_type: messageType,
+        delivery_code: messageHistoryData.delivery_code
       });
 
       // Chamar a edge function send-webhook
-      const { data: webhookResponse, error: webhookError } = await (supabase as any)
-        .functions
-        .invoke('send-webhook', {
-          body: {
-            webhook_url: webhookUrl,
-            webhook_data: webhookData
-          }
-        });
+      const { data: webhookResponse, error: webhookError } = await supabase.functions.invoke('send-webhook', {
+        body: {
+          webhook_url: webhookUrl,
+          webhook_data: webhookData
+        }
+      });
 
       console.log('📡 Resposta da edge function:', webhookResponse);
       console.log('❌ Erro da edge function:', webhookError);
