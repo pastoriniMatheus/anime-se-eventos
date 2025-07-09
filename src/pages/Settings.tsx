@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe, Type, Code, ExternalLink } from 'lucide-react';
+import { Database, MessageSquare, BookOpen, GraduationCap, Webhook, Palette, Eye, FileText, Globe, Type, Code, ExternalLink, Key, Shield } from 'lucide-react';
 import CourseManager from '@/components/CourseManager';
 import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import StatusManager from '@/components/StatusManager';
@@ -22,6 +22,7 @@ const Settings = () => {
   const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
 
   const baseUrl = window.location.origin;
+  const supabaseUrl = "https://iznfrkdsmbtymnifqcdd.supabase.co";
 
   return (
     <div className="p-6 space-y-6">
@@ -129,6 +130,29 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               
+              {/* Informações de Autenticação */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  <h4 className="font-semibold text-blue-800">Autenticação da API</h4>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-blue-700">
+                    <strong>API Key (obrigatória para alguns endpoints):</strong>
+                  </p>
+                  <div className="bg-blue-100 p-3 rounded text-sm">
+                    <code className="text-blue-800">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6bmZya2RzbWJ0eW5taWZxY2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzIzOTAsImV4cCI6MjA2NzMwODM5MH0.8Rqh2hxan513BDqxDSYM_sy8O-hEPlAb9OLL166BzIQ</code>
+                  </div>
+                  <p className="text-xs text-blue-600">
+                    Use no header: <code>apikey: [chave-acima]</code>
+                  </p>
+                </div>
+                <div className="text-xs text-blue-600">
+                  <p><strong>Endpoints que REQUEREM API Key:</strong> Todos os endpoints do Supabase Edge Functions</p>
+                  <p><strong>Endpoints que NÃO requerem API Key:</strong> Endpoints dinâmicos da aplicação (ex: /api/message-delivery-webhook)</p>
+                </div>
+              </div>
+
               {/* Endpoints de Leads */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-blue-600">Endpoints de Leads</h3>
@@ -137,11 +161,14 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-green-50 text-green-700">POST</Badge>
-                      <code className="text-sm">/functions/v1/lead-capture</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/lead-capture</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Captura de leads via formulário</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
   "name": "Nome do Lead",
@@ -157,11 +184,14 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-blue-50 text-blue-700">POST</Badge>
-                      <code className="text-sm">/functions/v1/lead-status-callback</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/lead-status-callback</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Webhook para atualização de status de leads</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
   "lead_id": "uuid-do-lead",
@@ -180,11 +210,14 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-green-50 text-green-700">POST</Badge>
-                      <code className="text-sm">/functions/v1/validate-whatsapp</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/validate-whatsapp</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Validação de números do WhatsApp</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
   "whatsapp": "+5511999999999"
@@ -196,11 +229,14 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-blue-50 text-blue-700">POST</Badge>
-                      <code className="text-sm">/functions/v1/whatsapp-validation-callback</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/whatsapp-validation-callback</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Callback para resultado da validação do WhatsApp</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
   "whatsapp": "+5511999999999",
@@ -220,9 +256,10 @@ const Settings = () => {
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-purple-50 text-purple-700">POST</Badge>
                       <code className="text-sm">{baseUrl}/api/message-delivery-webhook</code>
+                      <Badge variant="secondary" className="bg-green-50 text-green-700">Público</Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600">Confirmação de entrega de mensagens (Endpoint Dinâmico)</p>
+                  <p className="text-sm text-gray-600">Confirmação de entrega de mensagens (Endpoint Dinâmico - Não requer API Key)</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
@@ -236,6 +273,36 @@ const Settings = () => {
                     Internamente redireciona para a Edge Function do Supabase.
                   </div>
                 </div>
+
+                <div className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">POST</Badge>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/send-webhook</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600">Envio de webhooks para sistemas externos</p>
+                  <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
+                    <strong>Body:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">{`{
+  "webhook_url": "https://exemplo.com/webhook",
+  "webhook_data": {
+    "type": "whatsapp",
+    "content": "Mensagem a ser enviada",
+    "recipients": [
+      {
+        "name": "Nome do Lead",
+        "whatsapp": "+5511999999999",
+        "email": "email@exemplo.com"
+      }
+    ]
+  }
+}`}</pre>
+                  </div>
+                </div>
               </div>
 
               {/* Endpoints de QR Code */}
@@ -246,7 +313,8 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-orange-50 text-orange-700">GET</Badge>
-                      <code className="text-sm">/functions/v1/qr-redirect/:tracking_id</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/qr-redirect/:tracking_id</code>
+                      <Badge variant="secondary" className="bg-green-50 text-green-700">Público</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Redirecionamento de QR Codes com tracking</p>
@@ -265,11 +333,14 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-indigo-50 text-indigo-700">POST</Badge>
-                      <code className="text-sm">/functions/v1/generate-event-report</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/generate-event-report</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Geração de relatórios de eventos</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
   "event_id": "uuid-do-evento",
@@ -282,36 +353,35 @@ const Settings = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="outline" className="bg-indigo-50 text-indigo-700">GET</Badge>
-                      <code className="text-sm">/functions/v1/database-export</code>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/database-export</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">Exportação completa do banco de dados</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Query Params:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">format=json|csv</pre>
                   </div>
                 </div>
-              </div>
 
-              {/* Webhooks Gerais */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-blue-600">Webhooks Gerais</h3>
-                
                 <div className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="bg-gray-50 text-gray-700">POST</Badge>
-                      <code className="text-sm">/functions/v1/send-webhook</code>
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700">POST</Badge>
+                      <code className="text-sm">{supabaseUrl}/functions/v1/sync-leads</code>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700"><Key className="h-3 w-3 mr-1" />API Key</Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600">Envio de webhooks personalizados</p>
+                  <p className="text-sm text-gray-600">Sincronização automática de leads</p>
                   <div className="bg-gray-50 p-3 rounded text-sm">
+                    <strong>Headers necessários:</strong>
+                    <pre className="mt-1 text-xs overflow-x-auto">apikey: [sua-api-key]</pre>
                     <strong>Body:</strong>
                     <pre className="mt-1 text-xs overflow-x-auto">{`{
-  "url": "https://exemplo.com/webhook",
-  "method": "POST",
-  "headers": {},
-  "body": {}
+  "webhook_url": "https://exemplo.com/webhook",
+  "mode": "all|new_only"
 }`}</pre>
                   </div>
                 </div>
@@ -321,12 +391,54 @@ const Settings = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
                 <h4 className="font-semibold text-blue-800">Informações Importantes</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Todos os endpoints requerem autenticação via API Key no header <code>apikey</code></li>
-                  <li>• Endpoints dinâmicos se adaptam automaticamente ao domínio da aplicação</li>
-                  <li>• Respostas sempre em formato JSON</li>
-                  <li>• Rate limiting aplicado: 60 requests por minuto por IP</li>
-                  <li>• Logs de todas as requisições são mantidos por 30 dias</li>
+                  <li>• <strong>Endpoints com API Key:</strong> Todos os endpoints do Supabase Edge Functions requerem autenticação</li>
+                  <li>• <strong>Endpoints Públicos:</strong> Endpoints dinâmicos da aplicação não requerem API Key</li>
+                  <li>• <strong>Rate Limiting:</strong> 60 requests por minuto por IP para endpoints públicos</li>
+                  <li>• <strong>Logs:</strong> Todas as requisições são mantidas por 30 dias</li>
+                  <li>• <strong>Formato de Resposta:</strong> Sempre JSON</li>
+                  <li>• <strong>CORS:</strong> Configurado para permitir requisições de qualquer origem</li>
                 </ul>
+              </div>
+
+              {/* Exemplos de Uso */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-blue-600">Exemplos de Uso</h3>
+                
+                <div className="border rounded-lg p-4 space-y-2">
+                  <h4 className="font-medium">Capturar um novo lead via JavaScript:</h4>
+                  <div className="bg-gray-900 text-gray-100 p-3 rounded text-sm overflow-x-auto">
+                    <pre>{`const response = await fetch('${supabaseUrl}/functions/v1/lead-capture', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+  },
+  body: JSON.stringify({
+    name: 'João Silva',
+    email: 'joao@exemplo.com',
+    whatsapp: '+5511999999999',
+    course_id: 'uuid-do-curso',
+    event_id: 'uuid-do-evento'
+  })
+});
+
+const result = await response.json();
+console.log(result);`}</pre>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-2">
+                  <h4 className="font-medium">Confirmar entrega de mensagem via cURL:</h4>
+                  <div className="bg-gray-900 text-gray-100 p-3 rounded text-sm overflow-x-auto">
+                    <pre>{`curl -X POST "${baseUrl}/api/message-delivery-webhook" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "delivery_code": "MSG-1234567890-abc123",
+    "lead_identifier": "joao@exemplo.com",
+    "status": "delivered"
+  }'`}</pre>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

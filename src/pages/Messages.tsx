@@ -5,19 +5,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { MessageSquare, Send, History, Trash2, Users, Eye, Copy, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { MessageSquare, Send, History, Trash2, Users, Eye, Copy, CheckCircle, XCircle, Clock, Smile, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMessageTemplates, useMessageHistory, useCreateMessageTemplate } from '@/hooks/useMessages';
 import { useClearMessageHistory } from '@/hooks/useMessageRecipients';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useLeads } from '@/hooks/useLeads';
+import { supabase } from '@/integrations/supabase/client';
 import MessageMetrics from '@/components/MessageMetrics';
 import MessageRecipientsModal from '@/components/MessageRecipientsModal';
+import EmojiPicker from '@/components/EmojiPicker';
 
 const Messages = () => {
   const { toast } = useToast();
@@ -29,6 +32,8 @@ const Messages = () => {
   const [onlyUndelivered, setOnlyUndelivered] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [showRecipientsModal, setShowRecipientsModal] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [leadStatuses, setLeadStatuses] = useState<any[]>([]);
 
   const { data: templates } = useMessageTemplates();
   const { data: messageHistory } = useMessageHistory();
@@ -37,6 +42,25 @@ const Messages = () => {
   const { data: leads } = useLeads();
   const createTemplate = useCreateMessageTemplate();
   const clearHistory = useClearMessageHistory();
+
+  // Carregar status dos leads
+  React.useEffect(() => {
+    const fetchLeadStatuses = async () => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from('lead_statuses')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        setLeadStatuses(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar status dos leads:', error);
+      }
+    };
+
+    fetchLeadStatuses();
+  }, []);
 
   const handleSendMessage = async () => {
     if (!messageContent.trim()) {
@@ -49,16 +73,121 @@ const Messages = () => {
     }
 
     try {
-      // Implementar lógica de envio de mensagem
-      toast({
-        title: "Mensagem enviada",
-        description: "A mensagem foi enviada com sucesso!",
+      // Buscar configurações de webhook
+      const { data: settings } = await (supabase as any)
+        .from('system_settings')
+        .select('*')
+        .eq('key', 'webhook_urls')
+        .single();
+
+      let webhookUrl = '';
+      if (settings?.value) {
+        const webhookUrls = typeof settings.value === 'string' 
+          ? JSON.parse(settings.value) 
+          : settings.value;
+        webhookUrl = webhookUrls[messageType] || '';
+      }
+
+      if (!webhookUrl) {
+        toast({
+          title: "Erro",
+          description: `Webhook para ${messageType} não configurado. Configure em Configurações > Webhooks`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Filtrar destinatários
+      let filteredLeads = leads || [];
+      
+      if (filterType === 'course' && filterValue) {
+        filteredLeads = filteredLeads.filter((lead: any) => lead.course_id === filterValue);
+      } else if (filterType === 'event' && filterValue) {
+        filteredLeads = filteredLeads.filter((lead: any) => lead.event_id === filterValue);
+      } else if (filterType === 'status' && filterValue) {
+        filteredLeads = filteredLeads.filter((lead: any) => lead.status_id === filterValue);
+      }
+
+      if (filteredLeads.length === 0) {
+        toast({
+          title: "Aviso",
+          description: "Nenhum destinatário encontrado com os filtros aplicados",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Criar histórico da mensagem
+      const { data: messageHistoryData, error: messageError } = await (supabase as any)
+        .from('message_history')
+        .insert([{
+          type: messageType,
+          content: messageContent,
+          filter_type: filterType,
+          filter_value: filterValue,
+          recipients_count: filteredLeads.length,
+          status: 'sending'
+        }])
+        .select()
+        .single();
+
+      if (messageError) throw messageError;
+
+      // Criar registros de destinatários
+      const recipients = filteredLeads.map((lead: any) => ({
+        message_history_id: messageHistoryData.id,
+        lead_id: lead.id,
+        delivery_status: 'pending'
+      }));
+
+      await (supabase as any)
+        .from('message_recipients')
+        .insert(recipients);
+
+      // Enviar webhook
+      const webhookData = {
+        type: messageType,
+        content: messageContent,
+        recipients: filteredLeads.map((lead: any) => ({
+          name: lead.name,
+          email: lead.email,
+          whatsapp: lead.whatsapp
+        })),
+        message_id: messageHistoryData.id
+      };
+
+      const response = await fetch('/functions/v1/send-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': process.env.VITE_SUPABASE_ANON_KEY || ''
+        },
+        body: JSON.stringify({
+          webhook_url: webhookUrl,
+          webhook_data: webhookData
+        })
       });
-      setMessageContent('');
-    } catch (error) {
+
+      if (response.ok) {
+        // Atualizar status da mensagem
+        await (supabase as any)
+          .from('message_history')
+          .update({ status: 'sent' })
+          .eq('id', messageHistoryData.id);
+
+        toast({
+          title: "Mensagem enviada",
+          description: `Mensagem enviada para ${filteredLeads.length} destinatários!`,
+        });
+        setMessageContent('');
+      } else {
+        throw new Error('Erro ao enviar webhook');
+      }
+    } catch (error: any) {
+      console.error('Erro ao enviar mensagem:', error);
       toast({
         title: "Erro",
-        description: "Erro ao enviar mensagem",
+        description: error.message || "Erro ao enviar mensagem",
         variant: "destructive",
       });
     }
@@ -87,6 +216,27 @@ const Messages = () => {
     }
   };
 
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      await (supabase as any)
+        .from('message_templates')
+        .delete()
+        .eq('id', templateId);
+
+      toast({
+        title: "Template excluído",
+        description: "Template excluído com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao excluir template:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir template",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleClearHistory = async () => {
     try {
       await clearHistory.mutateAsync();
@@ -101,6 +251,11 @@ const Messages = () => {
       title: "Código copiado",
       description: "Código de entrega copiado para a área de transferência",
     });
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setMessageContent(prev => prev + emoji);
+    setShowEmojiPicker(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -209,14 +364,11 @@ const Messages = () => {
                               {event.name}
                             </SelectItem>
                           )) :
-                          leads?.map((lead: any) => lead.status_id).filter((v, i, a) => a.indexOf(v) === i).map((statusId: string) => {
-                            const lead = leads.find((l: any) => l.status_id === statusId);
-                            return lead ? (
-                              <SelectItem key={statusId} value={statusId}>
-                                {lead.lead_statuses?.name || 'Status não definido'}
-                              </SelectItem>
-                            ) : null;
-                          })
+                          leadStatuses?.map((status: any) => (
+                            <SelectItem key={status.id} value={status.id}>
+                              {status.name}
+                            </SelectItem>
+                          ))
                         }
                       </SelectContent>
                     </Select>
@@ -236,7 +388,28 @@ const Messages = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="messageContent">Conteúdo da Mensagem</Label>
+                <Label htmlFor="templateName">Nome do Template (para salvar)</Label>
+                <Input
+                  id="templateName"
+                  placeholder="Digite o nome do template"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="messageContent">Conteúdo da Mensagem</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowEmojiPicker(true)}
+                  >
+                    <Smile className="h-4 w-4 mr-2" />
+                    Emojis
+                  </Button>
+                </div>
                 <Textarea
                   id="messageContent"
                   placeholder="Digite sua mensagem aqui..."
@@ -252,7 +425,8 @@ const Messages = () => {
                   Enviar Mensagem
                 </Button>
                 <Button variant="outline" onClick={handleSaveTemplate}>
-                  Salvar como Template
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Template
                 </Button>
               </div>
             </CardContent>
@@ -268,43 +442,39 @@ const Messages = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="templateName">Nome do Template</Label>
-                  <input
-                    id="templateName"
-                    className="w-full px-3 py-2 border rounded-md"
-                    placeholder="Digite o nome do template"
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                  />
-                </div>
-
-                {templates && templates.length > 0 ? (
-                  <div className="grid gap-4">
-                    {templates.map((template: any) => (
-                      <div key={template.id} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium">{template.name}</h3>
+              {templates && templates.length > 0 ? (
+                <div className="grid gap-4">
+                  {templates.map((template: any) => (
+                    <div key={template.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{template.name}</h3>
+                        <div className="flex items-center space-x-2">
                           <Badge variant="outline">{template.type}</Badge>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteTemplate(template.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">{template.content}</p>
-                        <Button
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setMessageContent(template.content)}
-                        >
-                          Usar Template
-                        </Button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    Nenhum template encontrado
-                  </div>
-                )}
-              </div>
+                      <p className="text-sm text-gray-600 mb-2">{template.content}</p>
+                      <Button
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setMessageContent(template.content)}
+                      >
+                        Usar Template
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  Nenhum template encontrado
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -409,6 +579,14 @@ const Messages = () => {
         onClose={() => setShowRecipientsModal(false)}
         messageHistory={selectedMessage}
       />
+
+      {/* Emoji Picker */}
+      {showEmojiPicker && (
+        <EmojiPicker
+          onEmojiSelect={handleEmojiSelect}
+          onClose={() => setShowEmojiPicker(false)}
+        />
+      )}
     </div>
   );
 };
