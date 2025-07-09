@@ -35,7 +35,7 @@ const Messages = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [leadStatuses, setLeadStatuses] = useState<any[]>([]);
 
-  const { data: templates } = useMessageTemplates();
+  const { data: templates, refetch: refetchTemplates } = useMessageTemplates();
   const { data: messageHistory } = useMessageHistory();
   const { data: courses } = useCourses();
   const { data: events } = useEvents();
@@ -144,7 +144,7 @@ const Messages = () => {
         .from('message_recipients')
         .insert(recipients);
 
-      // Enviar webhook
+      // Enviar webhook - CORRIGIDO: usar window.location.origin ao invés de process.env
       const webhookData = {
         type: messageType,
         content: messageContent,
@@ -160,7 +160,7 @@ const Messages = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': process.env.VITE_SUPABASE_ANON_KEY || ''
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6bmZya2RzbWJ0eW5taWZxY2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzIzOTAsImV4cCI6MjA2NzMwODM5MH0.8Rqh2hxan513BDqxDSYM_sy8O-hEPlAb9OLL166BzIQ'
         },
         body: JSON.stringify({
           webhook_url: webhookUrl,
@@ -180,6 +180,7 @@ const Messages = () => {
           description: `Mensagem enviada para ${filteredLeads.length} destinatários!`,
         });
         setMessageContent('');
+        setTemplateName('');
       } else {
         throw new Error('Erro ao enviar webhook');
       }
@@ -218,10 +219,15 @@ const Messages = () => {
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from('message_templates')
         .delete()
         .eq('id', templateId);
+
+      if (error) throw error;
+
+      // Recarregar templates após deletar
+      await refetchTemplates();
 
       toast({
         title: "Template excluído",
@@ -450,13 +456,27 @@ const Messages = () => {
                         <h3 className="font-medium">{template.name}</h3>
                         <div className="flex items-center space-x-2">
                           <Badge variant="outline">{template.type}</Badge>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteTemplate(template.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o template "{template.name}"? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteTemplate(template.id)}>
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{template.content}</p>
