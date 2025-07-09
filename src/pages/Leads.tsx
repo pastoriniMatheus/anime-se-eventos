@@ -20,6 +20,7 @@ import StatusEditor from '@/components/StatusEditor';
 import { exportLeadsToCSV } from '@/utils/csvExport';
 import { BookOpen, GraduationCap } from 'lucide-react';
 import ContactExporter from '@/components/ContactExporter';
+import { Layout } from '@/components/Layout';
 
 const Leads = () => {
   const { toast } = useToast();
@@ -245,7 +246,8 @@ const Leads = () => {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <Layout>
+      <div className="space-y-6">
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <h1 className="text-2xl md:text-3xl font-bold text-blue-600">Gerenciamento de Leads</h1>
         <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
@@ -709,7 +711,8 @@ const Leads = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

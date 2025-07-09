@@ -14,6 +14,7 @@ import FormSettings from '@/components/FormSettings';
 import NomenclatureSettings from '@/components/NomenclatureSettings';
 import EnrollmentStatusSettings from '@/components/EnrollmentStatusSettings';
 import { useNomenclature } from '@/hooks/useNomenclature';
+import { Layout } from '@/components/Layout';
 
 const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('webhooks');
@@ -25,7 +26,8 @@ const Settings = () => {
   const supabaseUrl = "https://iznfrkdsmbtymnifqcdd.supabase.co";
 
   return (
-    <div className="p-6 space-y-6">
+    <Layout>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-blue-600">Configurações do Sistema</h1>
       </div>
@@ -448,7 +450,8 @@ console.log(result);`}</pre>
           <DatabaseExport />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

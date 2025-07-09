@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generateShortUrl, buildWhatsAppUrl, getCurrentDomain, buildQRRedirectUrl, buildFormUrl } from '@/utils/urlShortener';
 import { generateTrackingId } from '@/utils/trackingId';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Layout } from '@/components/Layout';
 
 const QRCodePage = () => {
   const { toast } = useToast();
@@ -298,7 +299,8 @@ const QRCodePage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <Layout>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Gerador de QR Code</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -700,7 +702,8 @@ const QRCodePage = () => {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
