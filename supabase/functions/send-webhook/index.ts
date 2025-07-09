@@ -59,7 +59,8 @@ serve(async (req) => {
     console.log('📋 Dados para envio:', {
       type: webhook_data.type,
       recipients_count: webhook_data.recipients?.length || 0,
-      has_content: !!webhook_data.content
+      has_content: !!webhook_data.content,
+      delivery_code: webhook_data.delivery_code // Log do delivery_code
     });
 
     // Validar se a URL é válida
@@ -79,7 +80,7 @@ serve(async (req) => {
       });
     }
 
-    // Preparar dados em formato ainda mais simples para o n8n
+    // Preparar dados incluindo o delivery_code
     const dataToSend = {
       type: webhook_data.type,
       content: webhook_data.content,
@@ -90,6 +91,7 @@ serve(async (req) => {
       })) || [],
       total_recipients: webhook_data.recipients?.length || 0,
       message_id: webhook_data.message_id || null,
+      delivery_code: webhook_data.delivery_code || null, // Incluindo o delivery_code
       timestamp: new Date().toISOString()
     };
 
@@ -160,7 +162,7 @@ serve(async (req) => {
           webhook_url: webhook_url,
           sent_data: dataToSend
         }), { 
-          status: 422, // Retornando 422 ao invés do status original para não quebrar o frontend
+          status: 422,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -174,7 +176,8 @@ serve(async (req) => {
         response: responseText,
         webhook_url: webhook_url,
         message: 'Webhook sent successfully',
-        recipients_count: webhook_data.recipients?.length || 0
+        recipients_count: webhook_data.recipients?.length || 0,
+        delivery_code: webhook_data.delivery_code // Retornando o delivery_code na resposta
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -211,7 +214,7 @@ serve(async (req) => {
         details: errorDetails,
         webhook_url: webhook_url
       }), { 
-        status: 422, // Retornando 422 para não quebrar o frontend
+        status: 422,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
