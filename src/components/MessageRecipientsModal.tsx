@@ -1,107 +1,140 @@
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useMessageRecipients } from '@/hooks/useMessageRecipients';
-import { CheckCircle, XCircle, Clock, Send, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { CheckCircle, XCircle, Clock, Copy } from 'lucide-react';
+import { useMessageRecipients } from '@/hooks/useMessageRecipients';
 import { useToast } from '@/hooks/use-toast';
 
 interface MessageRecipientsModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  messageHistoryId: string;
-  deliveryCode: string;
+  isOpen: boolean;
+  onClose: () => void;
+  messageHistory: any;
 }
 
 const MessageRecipientsModal: React.FC<MessageRecipientsModalProps> = ({
-  open,
-  onOpenChange,
-  messageHistoryId,
-  deliveryCode
+  isOpen,
+  onClose,
+  messageHistory
 }) => {
-  const { data: recipients = [], isLoading } = useMessageRecipients(messageHistoryId);
   const { toast } = useToast();
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pendente' },
-      sent: { color: 'bg-blue-100 text-blue-800', icon: Send, label: 'Enviado' },
-      delivered: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Entregue' },
-      failed: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Falhou' }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    const IconComponent = config.icon;
-    
-    return (
-      <Badge className={config.color}>
-        <IconComponent className="w-3 h-3 mr-1" />
-        {config.label}
-      </Badge>
-    );
-  };
+  const { data: recipients, isLoading } = useMessageRecipients(messageHistory?.id);
 
   const copyDeliveryCode = () => {
-    navigator.clipboard.writeText(deliveryCode);
-    toast({
-      title: "Código copiado",
-      description: "Código de entrega copiado para a área de transferência",
-    });
+    if (messageHistory?.delivery_code) {
+      navigator.clipboard.writeText(messageHistory.delivery_code);
+      toast({
+        title: "Código copiado",
+        description: "Código de entrega copiado para a área de transferência",
+      });
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'delivered':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'failed':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'delivered':
+        return <Badge className="bg-green-100 text-green-800">Entregue</Badge>;
+      case 'failed':
+        return <Badge className="bg-red-100 text-red-800">Falhou</Badge>;
+      default:
+        return <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>;
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            Destinatários da Mensagem
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Código:</span>
-              <code className="bg-muted px-2 py-1 rounded text-sm">{deliveryCode}</code>
-              <Button size="sm" variant="outline" onClick={copyDeliveryCode}>
-                <Copy className="w-3 h-3" />
+          <DialogTitle>Destinatários da Mensagem</DialogTitle>
+          <DialogDescription>
+            Detalhes dos destinatários para a mensagem enviada em{' '}
+            {messageHistory?.sent_at ? 
+              new Date(messageHistory.sent_at).toLocaleString('pt-BR') : 
+              'Data não disponível'
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {messageHistory?.delivery_code && (
+            <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium">Código de Entrega:</span>
+              <code className="bg-white px-2 py-1 rounded text-sm">
+                {messageHistory.delivery_code}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyDeliveryCode}
+                className="ml-auto"
+              >
+                <Copy className="h-4 w-4" />
               </Button>
             </div>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <ScrollArea className="max-h-[60vh]">
-          <div className="space-y-3">
+          )}
+
+          <ScrollArea className="h-96">
             {isLoading ? (
-              <div className="text-center py-8">Carregando destinatários...</div>
-            ) : recipients.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Nenhum destinatário encontrado
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-12 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : recipients && recipients.length > 0 ? (
+              <div className="space-y-2">
+                {recipients.map((recipient: any) => (
+                  <div
+                    key={recipient.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex items-center space-x-3">
+                      {getStatusIcon(recipient.delivery_status)}
+                      <div>
+                        <p className="font-medium">{recipient.leads?.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {recipient.leads?.email} • {recipient.leads?.whatsapp}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {getStatusBadge(recipient.delivery_status)}
+                      {recipient.delivered_at && (
+                        <span className="text-xs text-gray-500">
+                          {new Date(recipient.delivered_at).toLocaleString('pt-BR')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
-              recipients.map((recipient: any) => (
-                <div key={recipient.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h4 className="font-medium">{recipient.leads?.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {recipient.leads?.email} | {recipient.leads?.whatsapp}
-                      </p>
-                    </div>
-                    {getStatusBadge(recipient.delivery_status)}
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground">
-                    <div>Enviado: {new Date(recipient.sent_at).toLocaleString('pt-BR')}</div>
-                    {recipient.delivered_at && (
-                      <div>Entregue: {new Date(recipient.delivered_at).toLocaleString('pt-BR')}</div>
-                    )}
-                    {recipient.error_message && (
-                      <div className="text-red-600 mt-1">Erro: {recipient.error_message}</div>
-                    )}
-                  </div>
-                </div>
-              ))
+              <div className="text-center text-gray-500 py-8">
+                Nenhum destinatário encontrado
+              </div>
             )}
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );

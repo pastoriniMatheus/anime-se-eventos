@@ -2,105 +2,73 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { MessageCircle, Users, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
 import { useMessageMetrics } from '@/hooks/useMessageRecipients';
-import { 
-  MessageSquare, 
-  Users, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
-  Send,
-  TrendingUp
-} from 'lucide-react';
 
 const MessageMetrics = () => {
   const { data: metrics, isLoading } = useMessageMetrics();
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-16 bg-gray-200 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  const metricsData = [
-    {
-      title: "Total de Envios",
-      value: metrics?.totalMessages || 0,
-      icon: MessageSquare,
-      color: "text-blue-600"
-    },
-    {
-      title: "Total de Destinatários",
-      value: metrics?.totalRecipients || 0,
-      icon: Users,
-      color: "text-purple-600"
-    },
-    {
-      title: "Taxa de Entrega",
-      value: `${metrics?.deliveryRate || 0}%`,
-      icon: TrendingUp,
-      color: "text-green-600"
-    },
-    {
-      title: "Entregas Confirmadas",
-      value: metrics?.delivered || 0,
-      icon: CheckCircle,
-      color: "text-green-600"
-    }
-  ];
-
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {metricsData.map((metric, index) => {
-          const IconComponent = metric.icon;
-          return (
-            <Card key={index}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {metric.title}
-                    </p>
-                    <p className="text-2xl font-bold">{metric.value}</p>
-                  </div>
-                  <IconComponent className={`h-8 w-8 ${metric.color}`} />
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Status breakdown */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Status dos Envios</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total de Envios</CardTitle>
+          <MessageCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary" className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+          <div className="text-2xl font-bold">{metrics?.totalMessages || 0}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total de Destinatários</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{metrics?.totalRecipients || 0}</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Taxa de Entrega</CardTitle>
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{metrics?.deliveryRate || 0}%</div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-1">
+            <Badge variant="outline" className="text-xs">
+              <Clock className="h-3 w-3 mr-1" />
               Pendente: {metrics?.pending || 0}
             </Badge>
-            <Badge variant="default" className="flex items-center gap-1">
-              <Send className="w-3 h-3" />
-              Enviado: {metrics?.sent || 0}
-            </Badge>
-            <Badge variant="default" className="bg-green-100 text-green-800 flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" />
+            <Badge variant="outline" className="text-xs">
+              <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
               Entregue: {metrics?.delivered || 0}
             </Badge>
-            <Badge variant="destructive" className="flex items-center gap-1">
-              <XCircle className="w-3 h-3" />
+            <Badge variant="outline" className="text-xs">
+              <XCircle className="h-3 w-3 mr-1 text-red-600" />
               Falhou: {metrics?.failed || 0}
             </Badge>
           </div>

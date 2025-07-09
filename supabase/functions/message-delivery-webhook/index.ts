@@ -5,58 +5,92 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-    
-    const body = await req.json()
-    const { delivery_code, lead_identifier, status = 'delivered' } = body
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    console.log('Confirmando entrega:', { delivery_code, lead_identifier, status })
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { 
+          status: 405, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
-    // Chamar a função do banco para confirmar entrega
-    const { data, error } = await supabase.rpc('confirm_message_delivery', {
+    const { delivery_code, lead_identifier, status = 'delivered' } = await req.json()
+
+    if (!delivery_code || !lead_identifier) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'delivery_code and lead_identifier are required' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('Processing delivery confirmation:', {
+      delivery_code,
+      lead_identifier,
+      status
+    })
+
+    // Chamar a função do banco para confirmar a entrega
+    const { data, error } = await supabaseClient.rpc('confirm_message_delivery', {
       p_delivery_code: delivery_code,
       p_lead_identifier: lead_identifier,
       p_status: status
     })
 
     if (error) {
-      console.error('Erro ao confirmar entrega:', error)
-      throw error
+      console.error('Database error:', error)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Database error: ' + error.message 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    console.log('Resultado da confirmação:', data)
+    console.log('Delivery confirmation result:', data)
 
     return new Response(
       JSON.stringify(data),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     )
 
-  } catch (error: any) {
-    console.error('Erro no webhook de entrega:', error)
-    
+  } catch (error) {
+    console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ 
-        success: false,
-        error: error.message || 'Internal server error'
+        success: false, 
+        error: 'Internal server error: ' + error.message 
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     )
   }

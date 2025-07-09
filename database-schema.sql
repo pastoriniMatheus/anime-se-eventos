@@ -346,6 +346,7 @@ ALTER TABLE public.message_recipients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scan_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.authorized_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whatsapp_validations ENABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
 -- POLÍTICAS RLS
@@ -362,6 +363,7 @@ CREATE POLICY "Allow all access" ON public.message_templates FOR ALL USING (true
 CREATE POLICY "Allow all access" ON public.message_history FOR ALL USING (true);
 CREATE POLICY "Allow all access" ON public.message_recipients FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access" ON public.system_settings FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.whatsapp_validations FOR ALL USING (true);
 
 -- Política específica para scan_sessions
 CREATE POLICY "Allow all access to scan_sessions" 
