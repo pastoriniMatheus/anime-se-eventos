@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -302,27 +303,6 @@ const Messages = () => {
 
       if (recipientsError) {
         console.error('❌ Erro ao salvar destinatários:', recipientsError);
-      }
-
-      // Buscar configurações de webhook
-      const webhookSettings = settings.find(s => s.key === 'webhook_urls');
-      
-      if (!webhookSettings?.value) {
-        throw new Error('Configurações de webhook não encontradas');
-      }
-
-      let webhookUrls;
-      try {
-        webhookUrls = typeof webhookSettings.value === 'string' 
-          ? JSON.parse(webhookSettings.value) 
-          : webhookSettings.value;
-      } catch (parseError) {
-        throw new Error('Erro ao processar configurações de webhook');
-      }
-
-      const webhookUrl = webhookUrls[messageType];
-      if (!webhookUrl || webhookUrl.trim() === '') {
-        throw new Error(`URL do webhook ${messageType} não configurada`);
       }
 
       // Preparar dados para webhook
@@ -865,3 +845,4 @@ const Messages = () => {
 };
 
 export default Messages;
+
