@@ -46,10 +46,10 @@ const MessageDeliveryWebhook = () => {
         // Interceptar requisições POST para esta rota
         const originalFetch = window.fetch;
         window.fetch = async (input, init) => {
-          const url = typeof input === 'string' ? input : input.url;
+          const requestUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
           
-          if (url.includes('/api/message-delivery-webhook') && init?.method === 'POST') {
-            return handleMessageDeliveryWebhook(new Request(url, init));
+          if (requestUrl.includes('/api/message-delivery-webhook') && init?.method === 'POST') {
+            return handleMessageDeliveryWebhook(new Request(requestUrl, init));
           }
           
           return originalFetch(input, init);
