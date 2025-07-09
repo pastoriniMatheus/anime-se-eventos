@@ -43,7 +43,7 @@ const Header = () => {
     {
       title: 'Dashboard',
       icon: BarChart3,
-      path: '/',
+      path: '/dashboard',
     },
     {
       title: 'Leads',
@@ -120,7 +120,7 @@ const Header = () => {
 
         <div className="flex items-center space-x-2">
           <span className="text-xs text-gray-600 hidden sm:block">
-            <strong className="text-primary">Usuário</strong>
+            <strong className="text-primary">{user?.username}</strong>
           </span>
           <Button
             variant="outline"
@@ -181,7 +181,7 @@ const Header = () => {
 
       <div className="flex items-center space-x-4">
         <span className="text-sm text-gray-600">
-          Olá, <strong className="text-primary">Usuário</strong>
+          Olá, <strong className="text-primary">{user?.username}</strong>
         </span>
         <Button
           variant="outline"

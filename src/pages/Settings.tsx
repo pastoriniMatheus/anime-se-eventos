@@ -12,7 +12,6 @@ import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
 import NomenclatureSettings from '@/components/NomenclatureSettings';
 import EnrollmentStatusSettings from '@/components/EnrollmentStatusSettings';
-import ApiDocumentation from '@/components/ApiDocumentation';
 import { useNomenclature } from '@/hooks/useNomenclature';
 
 const Settings = () => {
@@ -115,7 +114,22 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="api">
-          <ApiDocumentation />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Globe className="h-5 w-5" />
+                <span>API</span>
+              </CardTitle>
+              <CardDescription>
+                Configure as integrações via API
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Configurações da API em breve...
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="banco">
