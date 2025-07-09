@@ -214,7 +214,7 @@ const Messages = () => {
                 <Checkbox 
                   id="onlyUndelivered" 
                   checked={onlyUndelivered}
-                  onCheckedChange={setOnlyUndelivered}
+                  onCheckedChange={(checked) => setOnlyUndelivered(checked === true)}
                 />
                 <Label htmlFor="onlyUndelivered">
                   Enviar apenas para contatos que ainda não receberam mensagem
