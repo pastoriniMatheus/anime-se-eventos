@@ -191,6 +191,7 @@ export type Database = {
       message_history: {
         Row: {
           content: string
+          delivery_code: string | null
           filter_type: string | null
           filter_value: string | null
           id: string
@@ -202,6 +203,7 @@ export type Database = {
         }
         Insert: {
           content: string
+          delivery_code?: string | null
           filter_type?: string | null
           filter_value?: string | null
           id?: string
@@ -213,6 +215,7 @@ export type Database = {
         }
         Update: {
           content?: string
+          delivery_code?: string | null
           filter_type?: string | null
           filter_value?: string | null
           id?: string
@@ -223,6 +226,54 @@ export type Database = {
           webhook_response?: string | null
         }
         Relationships: []
+      }
+      message_recipients: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivery_status: string
+          error_message: string | null
+          id: string
+          lead_id: string
+          message_history_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string
+          error_message?: string | null
+          id?: string
+          lead_id: string
+          message_history_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string
+          message_history_id?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_recipients_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_recipients_message_history_id_fkey"
+            columns: ["message_history_id"]
+            isOneToOne: false
+            referencedRelation: "message_history"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_templates: {
         Row: {
@@ -430,6 +481,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_message_delivery: {
+        Args: {
+          p_delivery_code: string
+          p_lead_identifier: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       get_scan_sessions: {
         Args: Record<PropertyKey, never>
         Returns: {

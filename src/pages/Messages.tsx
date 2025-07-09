@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useLeads } from '@/hooks/useLeads';
@@ -15,7 +15,10 @@ import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useMessageTemplates, useMessageHistory, useCreateMessageTemplate } from '@/hooks/useMessages';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useClearMessageHistory } from '@/hooks/useMessageRecipients';
 import { useQuery } from '@tanstack/react-query';
+import MessageMetrics from '@/components/MessageMetrics';
+import MessageRecipientsModal from '@/components/MessageRecipientsModal';
 import { 
   Send, 
   MessageSquare, 
@@ -29,7 +32,10 @@ import {
   Filter,
   Eye,
   Save,
-  Tag
+  Tag,
+  Trash2,
+  AlertTriangle,
+  Copy
 } from 'lucide-react';
 
 const Messages = () => {
@@ -40,6 +46,10 @@ const Messages = () => {
   const [templateName, setTemplateName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [onlyUnsent, setOnlyUnsent] = useState(false);
+  const [selectedMessageId, setSelectedMessageId] = useState<string>('');
+  const [showRecipientsModal, setShowRecipientsModal] = useState(false);
+  const [selectedDeliveryCode, setSelectedDeliveryCode] = useState('');
 
   const { data: leads = [] } = useLeads();
   const { data: courses = [] } = useCourses();
@@ -48,6 +58,7 @@ const Messages = () => {
   const { data: messageHistory = [] } = useMessageHistory();
   const { mutate: createTemplate } = useCreateMessageTemplate();
   const { data: settings = [] } = useSystemSettings();
+  const { mutate: clearHistory, isPending: isClearingHistory } = useClearMessageHistory();
   const { toast } = useToast();
 
   // Buscar status de leads
@@ -63,22 +74,6 @@ const Messages = () => {
       return data || [];
     }
   });
-
-  const getFilteredLeads = () => {
-    let filtered = leads;
-
-    if (filterType === 'course' && filterValue) {
-      filtered = leads.filter(lead => lead.course_id === filterValue);
-    } else if (filterType === 'event' && filterValue) {
-      filtered = leads.filter(lead => lead.event_id === filterValue);
-    } else if (filterType === 'status' && filterValue) {
-      filtered = leads.filter(lead => lead.status_id === filterValue);
-    }
-
-    return filtered;
-  };
-
-  const filteredLeads = getFilteredLeads();
 
   const handleTemplateSelect = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
@@ -107,6 +102,75 @@ const Messages = () => {
 
     setTemplateName('');
   };
+
+  const getPreviewRecipients = () => {
+    return filteredLeads.slice(0, 5);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      sent: { color: 'bg-green-100 text-green-800', label: 'Enviado' },
+      failed: { color: 'bg-red-100 text-red-800', label: 'Falhou' },
+      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pendente' },
+      sending: { color: 'bg-blue-100 text-blue-800', label: 'Enviando' }
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    
+    return (
+      <Badge className={config.color}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'whatsapp': return <MessageSquare className="w-4 h-4" />;
+      case 'email': return <Mail className="w-4 h-4" />;
+      case 'sms': return <Smartphone className="w-4 h-4" />;
+      default: return <MessageSquare className="w-4 h-4" />;
+    }
+  };
+
+  // Buscar leads que já receberam mensagens do tipo selecionado
+  const { data: sentMessageRecipients = [] } = useQuery({
+    queryKey: ['sent_message_recipients', messageType],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('message_recipients')
+        .select(`
+          lead_id,
+          message_history!inner(type)
+        `)
+        .eq('message_history.type', messageType)
+        .eq('delivery_status', 'delivered');
+      
+      if (error) throw error;
+      return data?.map((item: any) => item.lead_id) || [];
+    }
+  });
+
+  const getFilteredLeads = () => {
+    let filtered = leads;
+
+    if (filterType === 'course' && filterValue) {
+      filtered = leads.filter(lead => lead.course_id === filterValue);
+    } else if (filterType === 'event' && filterValue) {
+      filtered = leads.filter(lead => lead.event_id === filterValue);
+    } else if (filterType === 'status' && filterValue) {
+      filtered = leads.filter(lead => lead.status_id === filterValue);
+    }
+
+    // Filtrar apenas leads que não receberam mensagem se checkbox estiver marcado
+    if (onlyUnsent) {
+      filtered = filtered.filter(lead => !sentMessageRecipients.includes(lead.id));
+    }
+
+    return filtered;
+  };
+
+  const filteredLeads = getFilteredLeads();
 
   const handleSendMessage = async () => {
     if (!messageContent.trim()) {
@@ -200,7 +264,7 @@ const Messages = () => {
         recipients: filteredLeads.length,
         webhookUrl: webhookUrl
       });
-
+      
       // Registrar mensagem no histórico primeiro
       const messageData = {
         type: messageType,
@@ -213,7 +277,7 @@ const Messages = () => {
 
       console.log('💾 Salvando no histórico:', messageData);
 
-      const { data: messageRecord, error: historyError } = await supabase
+      const { data: messageRecord, error: historyError } = await (supabase as any)
         .from('message_history')
         .insert([messageData])
         .select()
@@ -221,14 +285,50 @@ const Messages = () => {
 
       if (historyError) {
         console.error('❌ Erro ao salvar no histórico:', historyError);
-      } else {
-        console.log('✅ Mensagem salva no histórico:', messageRecord);
+        throw historyError;
+      }
+
+      // Registrar destinatários individuais
+      const recipients = filteredLeads.map(lead => ({
+        message_history_id: messageRecord.id,
+        lead_id: lead.id,
+        delivery_status: 'pending'
+      }));
+
+      const { error: recipientsError } = await (supabase as any)
+        .from('message_recipients')
+        .insert(recipients);
+
+      if (recipientsError) {
+        console.error('❌ Erro ao salvar destinatários:', recipientsError);
+      }
+
+      // Buscar configurações de webhook
+      const webhookSettings = settings.find(s => s.key === 'webhook_urls');
+      
+      if (!webhookSettings?.value) {
+        throw new Error('Configurações de webhook não encontradas');
+      }
+
+      let webhookUrls;
+      try {
+        webhookUrls = typeof webhookSettings.value === 'string' 
+          ? JSON.parse(webhookSettings.value) 
+          : webhookSettings.value;
+      } catch (parseError) {
+        throw new Error('Erro ao processar configurações de webhook');
+      }
+
+      const webhookUrl = webhookUrls[messageType];
+      if (!webhookUrl || webhookUrl.trim() === '') {
+        throw new Error(`URL do webhook ${messageType} não configurada`);
       }
 
       // Preparar dados para webhook
       const webhookData = {
         type: messageType,
         content: messageContent,
+        delivery_code: messageRecord.delivery_code,
         recipients: filteredLeads.map(lead => ({
           id: lead.id,
           name: lead.name,
@@ -240,74 +340,66 @@ const Messages = () => {
           value: filterValue,
           total_recipients: filteredLeads.length
         },
-        message_id: messageRecord?.id || null
+        message_id: messageRecord.id
       };
 
-      console.log('📤 CHAMANDO EDGE FUNCTION com URL EXATA:', webhookUrl);
-      console.log('📋 Dados do webhook:', {
-        url: webhookUrl,
-        type: webhookData.type,
-        recipients: webhookData.recipients.length
-      });
+      console.log('📤 Enviando webhook...');
 
       // Chamar edge function para enviar webhook
       const { data: webhookResponse, error: webhookError } = await supabase.functions.invoke('send-webhook', {
         body: {
-          webhook_url: webhookUrl, // URL EXATA do campo salvo
+          webhook_url: webhookUrl,
           webhook_data: webhookData
         }
       });
-
-      console.log('📥 Resposta da edge function:', { webhookResponse, webhookError });
 
       if (webhookError) {
         console.error('❌ Erro na edge function:', webhookError);
         
         // Atualizar status para falhou
-        if (messageRecord?.id) {
-          await supabase
-            .from('message_history')
-            .update({ 
-              status: 'failed',
-              webhook_response: JSON.stringify(webhookError)
-            })
-            .eq('id', messageRecord.id);
-        }
+        await (supabase as any)
+          .from('message_history')
+          .update({ 
+            status: 'failed',
+            webhook_response: JSON.stringify(webhookError)
+          })
+          .eq('id', messageRecord.id);
 
-        toast({
-          title: "Erro ao enviar webhook",
-          description: `Erro: ${webhookError.message || 'Verifique a URL e configurações'}`,
-          variant: "destructive",
-        });
+        throw new Error(`Erro ao enviar webhook: ${webhookError.message}`);
       } else {
-        console.log('✅ Webhook executado com sucesso:', webhookResponse);
+        console.log('✅ Webhook executado com sucesso');
         
         // Atualizar status para enviado
-        if (messageRecord?.id) {
-          await supabase
-            .from('message_history')
-            .update({ 
-              status: 'sent',
-              webhook_response: JSON.stringify(webhookResponse)
-            })
-            .eq('id', messageRecord.id);
-        }
+        await (supabase as any)
+          .from('message_history')
+          .update({ 
+            status: 'sent',
+            webhook_response: JSON.stringify(webhookResponse)
+          })
+          .eq('id', messageRecord.id);
+
+        // Atualizar status dos destinatários para 'sent'
+        await (supabase as any)
+          .from('message_recipients')
+          .update({ delivery_status: 'sent' })
+          .eq('message_history_id', messageRecord.id);
 
         toast({
           title: "Mensagem enviada com sucesso! 🎉",
-          description: `Mensagem ${messageType} enviada para ${filteredLeads.length} lead(s)`,
+          description: `Mensagem ${messageType} enviada para ${filteredLeads.length} lead(s). Código: ${messageRecord.delivery_code}`,
         });
 
-        // Limpar formulário apenas em caso de sucesso
+        // Limpar formulário
         setMessageContent('');
         setSelectedTemplate('');
+        setOnlyUnsent(false);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('💥 Erro geral ao enviar mensagem:', error);
       toast({
-        title: "Erro Inesperado",
-        description: "Erro interno ao processar a mensagem. Tente novamente.",
+        title: "Erro ao enviar mensagem",
+        description: error.message || "Erro interno ao processar a mensagem",
         variant: "destructive",
       });
     } finally {
@@ -315,34 +407,24 @@ const Messages = () => {
     }
   };
 
-  const getPreviewRecipients = () => {
-    return filteredLeads.slice(0, 5);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      sent: { color: 'bg-green-100 text-green-800', label: 'Enviado' },
-      failed: { color: 'bg-red-100 text-red-800', label: 'Falhou' },
-      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pendente' },
-      sending: { color: 'bg-blue-100 text-blue-800', label: 'Enviando' }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    
-    return (
-      <Badge className={config.color}>
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'whatsapp': return <MessageSquare className="w-4 h-4" />;
-      case 'email': return <Mail className="w-4 h-4" />;
-      case 'sms': return <Smartphone className="w-4 h-4" />;
-      default: return <MessageSquare className="w-4 h-4" />;
+  const handleClearHistory = () => {
+    if (window.confirm('Tem certeza que deseja limpar todo o histórico de mensagens? Esta ação não pode ser desfeita.')) {
+      clearHistory();
     }
+  };
+
+  const copyDeliveryCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({
+      title: "Código copiado",
+      description: "Código de entrega copiado para a área de transferência",
+    });
+  };
+
+  const showRecipients = (messageId: string, deliveryCode: string) => {
+    setSelectedMessageId(messageId);
+    setSelectedDeliveryCode(deliveryCode);
+    setShowRecipientsModal(true);
   };
 
   return (
@@ -352,6 +434,7 @@ const Messages = () => {
           <h1 className="text-3xl font-bold text-gray-900">Central de Mensagens</h1>
           <p className="text-gray-600 mt-1">Gerencie e envie mensagens para seus leads</p>
         </div>
+        <MessageMetrics />
       </div>
 
       <Tabs defaultValue="send" className="w-full">
@@ -541,24 +624,40 @@ const Messages = () => {
                       <SelectContent>
                         {leadStatuses.map((status) => (
                           <SelectItem key={status.id} value={status.id}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: status.color }}
-                              />
-                              {status.name}
-                            </div>
-                          </SelectItem>
+                            <div 
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: status.color }}
+                            />
+                            {status.name}
+                          </div>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
 
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="only-unsent" 
+                    checked={onlyUnsent}
+                    onCheckedChange={(checked) => setOnlyUnsent(checked as boolean)}
+                  />
+                  <Label htmlFor="only-unsent" className="text-sm">
+                    Enviar apenas para contatos que ainda não receberam mensagem {messageType}
+                  </Label>
+                </div>
+
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <Eye className="w-4 h-4" />
-                    <span className="font-medium">Destinatários: {filteredLeads.length}</span>
+                    <span className="font-medium">
+                      Destinatários: {filteredLeads.length}
+                      {onlyUnsent && sentMessageRecipients.length > 0 && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          ({leads.length - sentMessageRecipients.length} não receberam ainda)
+                        </span>
+                      )}
+                    </span>
                   </div>
                   
                   {getPreviewRecipients().length > 0 && (
@@ -669,14 +768,26 @@ const Messages = () => {
         <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Histórico de Mensagens
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <History className="w-5 h-5" />
+                  Histórico de Mensagens
+                </CardTitle>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleClearHistory}
+                  disabled={isClearingHistory}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isClearingHistory ? 'Limpando...' : 'Limpar Histórico'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {messageHistory.map((message) => (
+                {messageHistory.map((message: any) => (
                   <div key={message.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -684,20 +795,45 @@ const Messages = () => {
                         <span className="font-medium capitalize">{message.type}</span>
                         {getStatusBadge(message.status)}
                       </div>
-                      <span className="text-sm text-gray-500">
-                        {new Date(message.sent_at).toLocaleString('pt-BR')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">
+                          {new Date(message.sent_at).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
                     </div>
                     
-                    <div className="mb-2">
+                    <div className="mb-2 flex items-center justify-between">
                       <span className="text-sm text-gray-600">
                         Enviado para {message.recipients_count} destinatário(s)
+                        {message.filter_type && message.filter_type !== 'all' && (
+                          <span className="ml-2">• Filtro: {message.filter_type}</span>
+                        )}
                       </span>
-                      {message.filter_type && message.filter_type !== 'all' && (
-                        <span className="text-sm text-gray-600 ml-2">
-                          • Filtro: {message.filter_type}
-                        </span>
-                      )}
+                      
+                      <div className="flex items-center gap-2">
+                        {message.delivery_code && (
+                          <>
+                            <code className="bg-muted px-2 py-1 rounded text-xs">
+                              {message.delivery_code}
+                            </code>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => copyDeliveryCode(message.delivery_code)}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => showRecipients(message.id, message.delivery_code)}
+                        >
+                          <Users className="w-3 h-3 mr-1" />
+                          Ver Destinatários
+                        </Button>
+                      </div>
                     </div>
                     
                     <p className="text-sm bg-gray-50 p-2 rounded truncate">
@@ -714,6 +850,13 @@ const Messages = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <MessageRecipientsModal
+        open={showRecipientsModal}
+        onOpenChange={setShowRecipientsModal}
+        messageHistoryId={selectedMessageId}
+        deliveryCode={selectedDeliveryCode}
+      />
     </div>
   );
 };

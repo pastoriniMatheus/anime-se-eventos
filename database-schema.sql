@@ -106,7 +106,21 @@ CREATE TABLE public.message_history (
   content TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('sent', 'failed', 'pending', 'sending')) DEFAULT 'pending',
   webhook_response TEXT,
-  sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+  sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  delivery_code TEXT UNIQUE DEFAULT CONCAT('MSG-', EXTRACT(EPOCH FROM now())::bigint, '-', SUBSTRING(gen_random_uuid()::text, 1, 8))
+);
+
+-- Tabela de destinatários de mensagem
+CREATE TABLE public.message_recipients (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  message_history_id UUID NOT NULL REFERENCES public.message_history(id) ON DELETE CASCADE,
+  lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+  delivery_status TEXT NOT NULL DEFAULT 'pending' CHECK (delivery_status IN ('pending', 'sent', 'delivered', 'failed')),
+  sent_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  delivered_at TIMESTAMP WITH TIME ZONE,
+  error_message TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  UNIQUE(message_history_id, lead_id)
 );
 
 -- Tabela de configurações do sistema
@@ -166,6 +180,12 @@ CREATE INDEX idx_leads_scan_session_id ON public.leads(scan_session_id);
 -- Índices para validações de WhatsApp
 CREATE INDEX idx_whatsapp_validations_status ON public.whatsapp_validations(status);
 CREATE INDEX idx_whatsapp_validations_created_at ON public.whatsapp_validations(created_at);
+
+-- Índices para destinatários de mensagem
+CREATE INDEX idx_message_recipients_message_history_id ON public.message_recipients(message_history_id);
+CREATE INDEX idx_message_recipients_lead_id ON public.message_recipients(lead_id);
+CREATE INDEX idx_message_recipients_delivery_status ON public.message_recipients(delivery_status);
+CREATE INDEX idx_message_history_delivery_code ON public.message_history(delivery_code);
 
 -- ====================================================================
 -- FUNÇÕES
@@ -243,6 +263,59 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Função para confirmar entrega via webhook
+CREATE OR REPLACE FUNCTION public.confirm_message_delivery(
+  p_delivery_code TEXT,
+  p_lead_identifier TEXT,
+  p_status TEXT DEFAULT 'delivered'
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_message_history_id UUID;
+  v_lead_id UUID;
+BEGIN
+  -- Buscar o histórico pelo código de entrega
+  SELECT id INTO v_message_history_id 
+  FROM public.message_history 
+  WHERE delivery_code = p_delivery_code;
+  
+  IF v_message_history_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Invalid delivery code');
+  END IF;
+  
+  -- Buscar o lead pelo identificador
+  SELECT id INTO v_lead_id 
+  FROM public.leads 
+  WHERE email = p_lead_identifier OR whatsapp = p_lead_identifier;
+  
+  IF v_lead_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Lead not found');
+  END IF;
+  
+  -- Atualizar status de entrega
+  UPDATE public.message_recipients 
+  SET 
+    delivery_status = p_status,
+    delivered_at = CASE WHEN p_status = 'delivered' THEN now() ELSE NULL END
+  WHERE message_history_id = v_message_history_id 
+    AND lead_id = v_lead_id;
+    
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'error', 'Message recipient not found');
+  END IF;
+  
+  RETURN json_build_object(
+    'success', true, 
+    'message', 'Delivery status updated successfully',
+    'delivery_code', p_delivery_code,
+    'status', p_status
+  );
+END;
+$$;
+
 -- ====================================================================
 -- TRIGGERS
 -- ====================================================================
@@ -269,6 +342,7 @@ ALTER TABLE public.qr_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.message_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.message_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.message_recipients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scan_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.authorized_users ENABLE ROW LEVEL SECURITY;
@@ -286,6 +360,7 @@ CREATE POLICY "Allow all access" ON public.qr_codes FOR ALL USING (true);
 CREATE POLICY "Allow all access" ON public.leads FOR ALL USING (true);
 CREATE POLICY "Allow all access" ON public.message_templates FOR ALL USING (true);
 CREATE POLICY "Allow all access" ON public.message_history FOR ALL USING (true);
+CREATE POLICY "Allow all access" ON public.message_recipients FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access" ON public.system_settings FOR ALL USING (true);
 
 -- Política específica para scan_sessions
