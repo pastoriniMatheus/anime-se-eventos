@@ -1,35 +1,40 @@
 
-// Endpoint dinâmico para confirmação de entrega de mensagens
-// Este arquivo permite que webhooks externos confirmem a entrega de mensagens
-// usando a URL da aplicação em vez da URL direta do Supabase
+import { supabase } from '@/integrations/supabase/client';
 
+// Função para confirmar entrega de mensagem usando a Edge Function do Supabase
 export const confirmMessageDelivery = async (deliveryCode: string, leadIdentifier: string, status: string = 'delivered') => {
   try {
-    // Usar a URL base da aplicação para criar um endpoint dinâmico
-    const baseUrl = window.location.origin;
-    const response = await fetch(`${baseUrl}/api/message-delivery-webhook`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    console.log('🔄 Confirmando entrega da mensagem:', {
+      deliveryCode,
+      leadIdentifier,
+      status
+    });
+
+    // Chamar a Edge Function message-delivery-webhook diretamente
+    const { data, error } = await supabase.functions.invoke('message-delivery-webhook', {
+      body: {
         delivery_code: deliveryCode,
         lead_identifier: leadIdentifier,
         status: status
-      })
+      }
     });
 
-    const result = await response.json();
-    return result;
+    if (error) {
+      console.error('❌ Erro na Edge Function:', error);
+      throw error;
+    }
+
+    console.log('✅ Resposta da confirmação de entrega:', data);
+    return data;
     
   } catch (error) {
-    console.error('Erro ao confirmar entrega da mensagem:', error);
+    console.error('💥 Erro ao confirmar entrega da mensagem:', error);
     throw error;
   }
 };
 
-// Função para obter a URL do webhook de entrega dinâmica
+// Função para obter a URL do webhook de entrega (para uso externo)
 export const getDeliveryWebhookUrl = () => {
-  const baseUrl = window.location.origin;
-  return `${baseUrl}/api/message-delivery-webhook`;
+  const supabaseUrl = 'https://iznfrkdsmbtynmifqcdd.supabase.co';
+  return `${supabaseUrl}/functions/v1/message-delivery-webhook`;
 };
