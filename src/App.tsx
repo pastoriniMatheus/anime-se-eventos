@@ -15,6 +15,7 @@ import QRCode from "./pages/QRCode";
 import LeadForm from "./pages/LeadForm";
 import Apresentacao from "./pages/Apresentacao";
 import SecretInstall from "./pages/SecretInstall";
+import APIs from "./pages/APIs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/leads" element={<Leads />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
+            <Route path="/apis" element={<APIs />} />
             <Route path="/qr-code" element={<QRCode />} />
             <Route path="/qr/:trackingId" element={<LeadForm />} />
             <Route path="/evento/:eventId" element={<LeadForm />} />

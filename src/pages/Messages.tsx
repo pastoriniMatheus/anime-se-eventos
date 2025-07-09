@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import MessageMetrics from '@/components/MessageMetrics';
 import MessageRecipientsModal from '@/components/MessageRecipientsModal';
 import EmojiPicker from '@/components/EmojiPicker';
+import { Layout } from '@/components/Layout';
 
 const Messages = () => {
   const { toast } = useToast();
@@ -351,7 +352,8 @@ const Messages = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <Layout>
+      <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-blue-600">Central de Mensagens</h1>
@@ -680,7 +682,8 @@ const Messages = () => {
           onClose={() => setShowEmojiPicker(false)}
         />
       )}
-    </div>
+      </div>
+    </Layout>
   );
 };
 

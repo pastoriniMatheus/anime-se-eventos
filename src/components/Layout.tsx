@@ -5,7 +5,11 @@ import Header from './Header';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
-export const Layout = () => {
+interface LayoutProps {
+  children?: React.ReactNode;
+}
+
+export const Layout = ({ children }: LayoutProps) => {
   const isMobile = useIsMobile();
   
   return (
@@ -15,7 +19,7 @@ export const Layout = () => {
         "flex-1 overflow-auto",
         isMobile ? "p-2" : "p-6"
       )}>
-        <Outlet />
+        {children || <Outlet />}
       </main>
     </div>
   );

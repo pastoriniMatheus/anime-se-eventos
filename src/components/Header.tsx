@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, MessageSquare, Settings, QrCode, LogOut, Menu } from 'lucide-react';
+import { BarChart3, Users, MessageSquare, Settings, QrCode, LogOut, Menu, Globe } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -54,6 +54,11 @@ const Header = () => {
       title: 'Mensagens',
       icon: MessageSquare,
       path: '/messages',
+    },
+    {
+      title: 'APIs',
+      icon: Globe,
+      path: '/apis',
     },
     {
       title: 'QR Code',

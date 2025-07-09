@@ -30,6 +30,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { useNomenclature } from '@/hooks/useNomenclature';
+import { Layout } from '@/components/Layout';
 
 const Dashboard = () => {
   const { data: leads = [] } = useLeads();
@@ -132,7 +133,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 ${isMobile ? 'p-2' : 'p-6'}`}>
+    <Layout>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -284,7 +285,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </Layout>
   );
 };
 
