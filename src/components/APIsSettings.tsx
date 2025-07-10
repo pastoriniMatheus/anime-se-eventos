@@ -1,411 +1,338 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, RefreshCw, Globe, Database, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { Globe, Webhook, Database, MessageSquare, QrCode, Users, FileText, Send } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
-interface Endpoint {
-  name: string;
-  url: string;
-  method: string;
-  description: string;
-  status: 'active' | 'inactive' | 'testing';
-  category: 'supabase' | 'external' | 'internal';
-  requiresAuth: boolean;
-}
-
 const APIsSettings = () => {
-  const { toast } = useToast();
-  const { data: settings } = useSystemSettings();
-  const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [projectId] = useState('iznfrkdsmbtynmifqcdd');
-
-  // Gerar endpoints automaticamente baseado no banco e configurações
-  useEffect(() => {
-    const generateEndpoints = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Edge Functions do Supabase (automáticos)
-        const supabaseEndpoints: Endpoint[] = [
-          {
-            name: 'Lead Capture',
-            url: `https://${projectId}.supabase.co/functions/v1/lead-capture`,
-            method: 'POST',
-            description: 'Capturar novos leads via formulário',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: false
-          },
-          {
-            name: 'Send Webhook',
-            url: `https://${projectId}.supabase.co/functions/v1/send-webhook`,
-            method: 'POST',
-            description: 'Enviar dados via webhook para sistemas externos',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          },
-          {
-            name: 'QR Redirect',
-            url: `https://${projectId}.supabase.co/functions/v1/qr-redirect`,
-            method: 'GET',
-            description: 'Redirecionamento inteligente de QR codes',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: false
-          },
-          {
-            name: 'WhatsApp Validation',
-            url: `https://${projectId}.supabase.co/functions/v1/validate-whatsapp`,
-            method: 'POST',
-            description: 'Validar números de WhatsApp',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          },
-          {
-            name: 'Message Delivery Webhook',
-            url: `https://${projectId}.supabase.co/functions/v1/message-delivery-webhook`,
-            method: 'POST',
-            description: 'Confirmar entrega de mensagens',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: false
-          },
-          {
-            name: 'Database Export',
-            url: `https://${projectId}.supabase.co/functions/v1/database-export`,
-            method: 'POST',
-            description: 'Exportar dados do banco em CSV',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          },
-          {
-            name: 'Sync Leads',
-            url: `https://${projectId}.supabase.co/functions/v1/sync-leads`,
-            method: 'POST',
-            description: 'Sincronizar leads com sistemas externos',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          }
-        ];
-
-        // Webhooks externos configurados
-        const webhookSettings = settings?.find(s => s.key === 'webhook_urls');
-        const externalEndpoints: Endpoint[] = [];
-        
-        if (webhookSettings?.value) {
-          const urls = typeof webhookSettings.value === 'string' 
-            ? JSON.parse(webhookSettings.value) 
-            : webhookSettings.value;
-          
-          Object.entries(urls).forEach(([key, url]: [string, any]) => {
-            if (url && url.trim()) {
-              externalEndpoints.push({
-                name: `Webhook ${key.toUpperCase()}`,
-                url: url as string,
-                method: 'POST',
-                description: `Webhook configurado para ${key}`,
-                status: 'active',
-                category: 'external',
-                requiresAuth: false
-              });
-            }
-          });
-        }
-
-        // APIs REST do Supabase (automáticas baseadas nas tabelas)
-        const restEndpoints: Endpoint[] = [
-          {
-            name: 'Leads API',
-            url: `https://${projectId}.supabase.co/rest/v1/leads`,
-            method: 'GET/POST/PATCH/DELETE',
-            description: 'CRUD para tabela de leads',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          },
-          {
-            name: 'Events API',
-            url: `https://${projectId}.supabase.co/rest/v1/events`,
-            method: 'GET/POST/PATCH/DELETE',
-            description: 'CRUD para tabela de eventos',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          },
-          {
-            name: 'Courses API',
-            url: `https://${projectId}.supabase.co/rest/v1/courses`,
-            method: 'GET/POST/PATCH/DELETE',
-            description: 'CRUD para tabela de cursos',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          },
-          {
-            name: 'Message History API',
-            url: `https://${projectId}.supabase.co/rest/v1/message_history`,
-            method: 'GET/POST/PATCH/DELETE',
-            description: 'CRUD para histórico de mensagens',
-            status: 'active',
-            category: 'supabase',
-            requiresAuth: true
-          }
-        ];
-
-        setEndpoints([...supabaseEndpoints, ...externalEndpoints, ...restEndpoints]);
-      } catch (error) {
-        console.error('Erro ao gerar endpoints:', error);
-        toast({
-          title: "Erro",
-          description: "Erro ao carregar endpoints",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    generateEndpoints();
-  }, [projectId, settings, toast]);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copiado!",
-      description: "URL copiada para a área de transferência",
-    });
-  };
-
-  const refreshEndpoints = () => {
-    setIsLoading(true);
-    // Força recarga dos endpoints
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-red-100 text-red-800';
-      case 'testing': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const { data: systemSettings = [] } = useSystemSettings();
+  
+  const webhookSettings = systemSettings.find(s => s.key === 'webhook_urls');
+  let webhookUrls = {};
+  
+  if (webhookSettings?.value) {
+    try {
+      webhookUrls = JSON.parse(webhookSettings.value);
+    } catch (e) {
+      console.error('Erro ao processar URLs dos webhooks:', e);
     }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'supabase': return <Database className="h-4 w-4" />;
-      case 'external': return <Globe className="h-4 w-4" />;
-      default: return <Globe className="h-4 w-4" />;
-    }
-  };
-
-  const groupedEndpoints = {
-    supabase: endpoints.filter(e => e.category === 'supabase'),
-    external: endpoints.filter(e => e.category === 'external'),
-    internal: endpoints.filter(e => e.category === 'internal')
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
   }
+
+  const supabaseUrl = "https://iznfrkdsmbtynmifqcdd.supabase.co";
+  const currentDomain = window.location.origin;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">APIs & Endpoints</h3>
-          <p className="text-sm text-muted-foreground">
-            Gerencie e monitore todos os endpoints do sistema
-          </p>
-        </div>
-        
-        <Button onClick={refreshEndpoints} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Atualizar
-        </Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Endpoints</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{endpoints.length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Edge Functions</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{groupedEndpoints.supabase.length}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Webhooks Externos</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{groupedEndpoints.external.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="all" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="all">Todos ({endpoints.length})</TabsTrigger>
-          <TabsTrigger value="supabase">Supabase ({groupedEndpoints.supabase.length})</TabsTrigger>
-          <TabsTrigger value="external">Externos ({groupedEndpoints.external.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-4">
-          {endpoints.map((endpoint, index) => (
-            <Card key={index}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {getCategoryIcon(endpoint.category)}
-                    <CardTitle className="text-base">{endpoint.name}</CardTitle>
-                    <Badge className={getStatusColor(endpoint.status)}>
-                      {endpoint.status}
-                    </Badge>
-                    {endpoint.requiresAuth && (
-                      <Badge variant="secondary">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Auth Required
-                      </Badge>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(endpoint.url)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Globe className="h-5 w-5" />
+            <span>APIs e Endpoints do Sistema</span>
+          </CardTitle>
+          <CardDescription>
+            Documentação completa de todas as APIs e webhooks disponíveis no sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          
+          {/* Seção de Webhooks */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+              <Webhook className="h-5 w-5" />
+              <span>Webhooks Configurados</span>
+            </h3>
+            <div className="grid gap-4">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium flex items-center space-x-2">
+                    <MessageSquare className="h-4 w-4" />
+                    <span>WhatsApp</span>
+                  </h4>
+                  <Badge variant="outline">POST</Badge>
                 </div>
-                <CardDescription>{endpoint.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{endpoint.method}</Badge>
-                  <code className="text-sm bg-muted px-2 py-1 rounded break-all">
-                    {endpoint.url}
-                  </code>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="supabase" className="space-y-4">
-          {groupedEndpoints.supabase.map((endpoint, index) => (
-            <Card key={index}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Database className="h-4 w-4" />
-                    <CardTitle className="text-base">{endpoint.name}</CardTitle>
-                    <Badge className={getStatusColor(endpoint.status)}>
-                      {endpoint.status}
-                    </Badge>
-                    {endpoint.requiresAuth && (
-                      <Badge variant="secondary">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Auth Required
-                      </Badge>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(endpoint.url)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CardDescription>{endpoint.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline">{endpoint.method}</Badge>
-                  <code className="text-sm bg-muted px-2 py-1 rounded break-all">
-                    {endpoint.url}
-                  </code>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="external" className="space-y-4">
-          {groupedEndpoints.external.length > 0 ? (
-            groupedEndpoints.external.map((endpoint, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Globe className="h-4 w-4" />
-                      <CardTitle className="text-base">{endpoint.name}</CardTitle>
-                      <Badge className={getStatusColor(endpoint.status)}>
-                        {endpoint.status}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(endpoint.url)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <CardDescription>{endpoint.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="outline">{endpoint.method}</Badge>
-                    <code className="text-sm bg-muted px-2 py-1 rounded break-all">
-                      {endpoint.url}
-                    </code>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Globe className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-semibold mb-2">Nenhum webhook externo configurado</h3>
-                <p className="text-muted-foreground mb-4">
-                  Configure webhooks externos nas configurações do sistema
+                <p className="text-sm text-gray-600 mb-2">
+                  Webhook para envio de mensagens WhatsApp
                 </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {webhookUrls.whatsapp || 'Não configurado'}
+                </code>
+                <div className="mt-3">
+                  <p className="text-sm font-medium mb-1">Payload esperado:</p>
+                  <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+{`{
+  "phone": "5582999999999",
+  "message": "Sua mensagem aqui",
+  "lead_id": "uuid-do-lead",
+  "tracking_id": "codigo-rastreamento"
+}`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium flex items-center space-x-2">
+                    <Send className="h-4 w-4" />
+                    <span>Email</span>
+                  </h4>
+                  <Badge variant="outline">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Webhook para envio de emails
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {webhookUrls.email || 'Não configurado'}
+                </code>
+                <div className="mt-3">
+                  <p className="text-sm font-medium mb-1">Payload esperado:</p>
+                  <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+{`{
+  "email": "lead@exemplo.com",
+  "subject": "Assunto do email",
+  "message": "Conteúdo da mensagem",
+  "lead_id": "uuid-do-lead"
+}`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">WhatsApp Validation</h4>
+                  <Badge variant="outline">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Webhook para validação de números WhatsApp
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {webhookUrls.whatsappValidation || 'Não configurado'}
+                </code>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Sync</h4>
+                  <Badge variant="outline">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Webhook para sincronização de dados
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {webhookUrls.sync || 'Não configurado'}
+                </code>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Seção de Edge Functions */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+              <Database className="h-5 w-5" />
+              <span>Edge Functions (Supabase)</span>
+            </h3>
+            <div className="grid gap-4">
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">QR Redirect</h4>
+                  <Badge variant="secondary">GET</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Redireciona QR codes para WhatsApp ou formulários
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/qr-redirect/[short_url]
+                </code>
+                <div className="mt-2">
+                  <p className="text-sm font-medium">Uso:</p>
+                  <p className="text-xs text-gray-600">
+                    Substitua [short_url] pelo código curto do QR code
+                  </p>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Lead Capture</h4>
+                  <Badge variant="secondary">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Captura novos leads do formulário
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/lead-capture
+                </code>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Send Webhook</h4>
+                  <Badge variant="secondary">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Envia mensagens via webhooks configurados
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/send-webhook
+                </code>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Validate WhatsApp</h4>
+                  <Badge variant="secondary">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Valida números de WhatsApp
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/validate-whatsapp
+                </code>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Generate Event Report</h4>
+                  <Badge variant="secondary">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Gera relatórios de eventos
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/generate-event-report
+                </code>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Database Export/Import</h4>
+                  <Badge variant="secondary">POST</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  Exporta e importa dados do banco
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block mb-1">
+                  {supabaseUrl}/functions/v1/database-export
+                </code>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/database-import
+                </code>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Seção de URLs do Sistema */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+              <Globe className="h-5 w-5" />
+              <span>URLs do Sistema</span>
+            </h3>
+            <div className="grid gap-4">
+              
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium flex items-center space-x-2">
+                    <FileText className="h-4 w-4" />
+                    <span>Formulário de Captura</span>
+                  </h4>
+                  <Badge variant="outline">GET</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  URL pública para captura de leads
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {currentDomain}/form?event=[NOME_EVENTO]&tracking=[ID_RASTREAMENTO]
+                </code>
+                <div className="mt-2">
+                  <p className="text-sm font-medium">Parâmetros:</p>
+                  <ul className="text-xs text-gray-600 list-disc list-inside">
+                    <li>event: Nome do evento (obrigatório)</li>
+                    <li>tracking: ID de rastreamento (opcional)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium flex items-center space-x-2">
+                    <QrCode className="h-4 w-4" />
+                    <span>QR Code Redirect</span>
+                  </h4>
+                  <Badge variant="outline">GET</Badge>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">
+                  URL de redirecionamento para QR codes
+                </p>
+                <code className="text-xs bg-gray-100 p-2 rounded block">
+                  {supabaseUrl}/functions/v1/qr-redirect/[SHORT_CODE]
+                </code>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Seção de Autenticação */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
+              <Users className="h-5 w-5" />
+              <span>Autenticação</span>
+            </h3>
+            <div className="border rounded-lg p-4">
+              <p className="text-sm text-gray-600 mb-3">
+                O sistema utiliza autenticação customizada baseada em usuários autorizados.
+                Para acessar endpoints protegidos, é necessário estar logado no sistema.
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="text-sm text-yellow-800">
+                  <strong>Nota:</strong> As Edge Functions utilizam Row Level Security (RLS) 
+                  e autenticação via Supabase. URLs públicas como formulários não requerem autenticação.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Seção de Exemplos de Integração */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Exemplos de Integração</h3>
+            
+            <div className="border rounded-lg p-4">
+              <h4 className="font-medium mb-2">Enviando mensagem via webhook:</h4>
+              <pre className="text-xs bg-gray-50 p-3 rounded overflow-x-auto">
+{`// JavaScript/Node.js
+const response = await fetch('${webhookUrls.whatsapp || 'SEU_WEBHOOK_WHATSAPP'}', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    phone: '5582999999999',
+    message: 'Olá! Esta é uma mensagem de teste.',
+    lead_id: 'uuid-do-lead'
+  })
+});
+
+// cURL
+curl -X POST "${webhookUrls.whatsapp || 'SEU_WEBHOOK_WHATSAPP'}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "5582999999999",
+    "message": "Olá! Esta é uma mensagem de teste.",
+    "lead_id": "uuid-do-lead"
+  }'`}
+              </pre>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

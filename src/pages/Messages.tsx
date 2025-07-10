@@ -8,15 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye, Save, Template } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useMessages } from '@/hooks/useMessages';
+import { useMessages, useMessageTemplates, useCreateMessageTemplate } from '@/hooks/useMessages';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import MessageRecipientsModal from '@/components/MessageRecipientsModal';
+import MessageMetrics from '@/components/MessageMetrics';
 import EmojiPicker from '@/components/EmojiPicker';
 
 interface LeadStatus {
@@ -34,11 +36,15 @@ const Messages = () => {
   const [sendOnlyToNew, setSendOnlyToNew] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [selectedMessageHistory, setSelectedMessageHistory] = useState<any>(null);
+  const [templateName, setTemplateName] = useState('');
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   
   const { data: messages = [], isLoading: messagesLoading } = useMessages();
+  const { data: templates = [] } = useMessageTemplates();
   const { data: courses = [] } = useCourses();
   const { data: events = [] } = useEvents();
   const { data: systemSettings = [] } = useSystemSettings();
+  const createTemplateMutation = useCreateMessageTemplate();
 
   // Buscar status de leads
   const { data: leadStatuses = [] } = useQuery({
@@ -157,6 +163,37 @@ const Messages = () => {
     }
   };
 
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim() || !message.trim()) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Digite um nome para o template e uma mensagem",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createTemplateMutation.mutateAsync({
+        name: templateName,
+        content: message,
+        type: 'whatsapp'
+      });
+      setTemplateName('');
+      setShowSaveTemplate(false);
+    } catch (error) {
+      console.error('Erro ao salvar template:', error);
+    }
+  };
+
+  const handleLoadTemplate = (template: any) => {
+    setMessage(template.content);
+    toast({
+      title: "Template carregado",
+      description: `Template "${template.name}" foi carregado na mensagem`,
+    });
+  };
+
   const getWebhookUrl = () => {
     const webhookSettings = systemSettings.find(s => s.key === 'webhook_urls');
     if (webhookSettings?.value) {
@@ -198,11 +235,18 @@ const Messages = () => {
           <h1 className="text-3xl font-bold text-blue-600">Mensagens</h1>
         </div>
 
+        {/* Métricas de Mensagens */}
+        <MessageMetrics />
+
         <Tabs defaultValue="send" className="space-y-6">
           <TabsList>
             <TabsTrigger value="send" className="flex items-center space-x-2">
               <Send className="h-4 w-4" />
               <span>Enviar Mensagem</span>
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center space-x-2">
+              <Template className="h-4 w-4" />
+              <span>Templates</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center space-x-2">
               <History className="h-4 w-4" />
@@ -241,6 +285,52 @@ const Messages = () => {
                       <EmojiPicker onEmojiSelect={addEmojiToMessage} />
                     </div>
                   </div>
+                  
+                  {/* Ação para salvar template */}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSaveTemplate(!showSaveTemplate)}
+                      disabled={!message.trim()}
+                    >
+                      <Save className="h-4 w-4 mr-1" />
+                      Salvar como Template
+                    </Button>
+                  </div>
+
+                  {/* Formulário para salvar template */}
+                  {showSaveTemplate && (
+                    <div className="border rounded-lg p-4 space-y-3 bg-gray-50">
+                      <div className="space-y-2">
+                        <Label htmlFor="template-name">Nome do Template</Label>
+                        <Input
+                          id="template-name"
+                          placeholder="Ex: Boas-vindas, Lembrete, etc."
+                          value={templateName}
+                          onChange={(e) => setTemplateName(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={handleSaveTemplate}
+                          size="sm"
+                          disabled={!templateName.trim() || !message.trim()}
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          Salvar Template
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowSaveTemplate(false)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -328,6 +418,54 @@ const Messages = () => {
                     </>
                   )}
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="templates">
+            <Card>
+              <CardHeader>
+                <CardTitle>Templates de Mensagem</CardTitle>
+                <CardDescription>
+                  Gerencie seus templates de mensagem salvos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {templates.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Template className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Nenhum template salvo ainda</p>
+                    <p className="text-sm">Crie uma mensagem e clique em "Salvar como Template"</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {templates.map((template: any) => (
+                      <div key={template.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{template.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-3">
+                              {template.content}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Badge variant="secondary">{template.type}</Badge>
+                              <span className="text-xs text-gray-500">
+                                {new Date(template.created_at).toLocaleDateString('pt-BR')}
+                              </span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleLoadTemplate(template)}
+                          >
+                            Usar Template
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
