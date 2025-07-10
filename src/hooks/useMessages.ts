@@ -19,6 +19,22 @@ export const useMessageTemplates = () => {
   });
 };
 
+export const useMessages = () => {
+  return useQuery({
+    queryKey: ['message_history'],
+    queryFn: async () => {
+      // Usar tipagem any para acessar tabelas não tipadas
+      const { data, error } = await (supabase as any)
+        .from('message_history')
+        .select('*')
+        .order('sent_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
+};
+
 export const useMessageHistory = () => {
   return useQuery({
     queryKey: ['message_history'],

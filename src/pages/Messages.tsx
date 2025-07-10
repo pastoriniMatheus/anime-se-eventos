@@ -35,7 +35,7 @@ const Messages = () => {
   const [filterValue, setFilterValue] = useState('');
   const [sendOnlyToNew, setSendOnlyToNew] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [selectedMessageHistory, setSelectedMessageHistory] = useState<any>(null);
   
   const { data: messages = [], isLoading: messagesLoading } = useMessages();
   const { data: courses = [] } = useCourses();
@@ -110,7 +110,7 @@ const Messages = () => {
       setFilterType('');
       setFilterValue('');
       setSendOnlyToNew(false);
-      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      queryClient.invalidateQueries({ queryKey: ['message_history'] });
       queryClient.invalidateQueries({ queryKey: ['contacts-never-messaged'] });
     },
     onError: (error: any) => {
@@ -174,6 +174,10 @@ const Messages = () => {
 
   const addEmojiToMessage = (emoji: string) => {
     setMessage(prev => prev + emoji);
+  };
+
+  const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
+    setSendOnlyToNew(checked === true);
   };
 
   return (
@@ -284,7 +288,7 @@ const Messages = () => {
                   <Checkbox
                     id="send-only-new"
                     checked={sendOnlyToNew}
-                    onCheckedChange={setSendOnlyToNew}
+                    onCheckedChange={handleCheckboxChange}
                   />
                   <Label htmlFor="send-only-new">
                     Enviar apenas para contatos que ainda não receberam mensagem
@@ -358,7 +362,7 @@ const Messages = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setSelectedMessageId(msg.id)}
+                              onClick={() => setSelectedMessageHistory(msg)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -425,10 +429,11 @@ const Messages = () => {
           </TabsContent>
         </Tabs>
 
-        {selectedMessageId && (
+        {selectedMessageHistory && (
           <MessageRecipientsModal
-            messageId={selectedMessageId}
-            onClose={() => setSelectedMessageId(null)}
+            isOpen={true}
+            onClose={() => setSelectedMessageHistory(null)}
+            messageHistory={selectedMessageHistory}
           />
         )}
       </div>
