@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,10 +18,7 @@ import { Layout } from '@/components/Layout';
 const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('webhooks');
   const [activeSecondaryTab, setActiveSecondaryTab] = useState('webhooks');
-  const { data: nomenclature } = useNomenclature();
-
-  const courseNomenclature = nomenclature?.course_nomenclature || 'Cursos';
-  const postgraduateNomenclature = nomenclature?.postgraduate_nomenclature || 'Pós-graduação';
+  const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
   const supabaseUrl = "https://iznfrkdsmbtymnifqcdd.supabase.co";
 
   return (

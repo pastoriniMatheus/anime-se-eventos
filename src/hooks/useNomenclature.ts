@@ -15,6 +15,10 @@ export const useNomenclature = () => {
   };
   
   return {
+    data: {
+      course_nomenclature: getCourseNomenclature(),
+      postgraduate_nomenclature: getPostgraduateNomenclature(),
+    },
     courseNomenclature: getCourseNomenclature(),
     postgraduateNomenclature: getPostgraduateNomenclature(),
   };
