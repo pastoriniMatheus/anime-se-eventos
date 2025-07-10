@@ -262,7 +262,7 @@ const Messages = () => {
                     </Select>
                   </div>
 
-                  {filterType && filterType !== 'all' && filterType !== '' && (
+                  {filterType !== '' && filterType !== 'all' && (
                     <div className="space-y-2">
                       <Label htmlFor="filter-value">
                         {filterType === 'course' && 'Curso'}
