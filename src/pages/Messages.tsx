@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -131,6 +130,27 @@ const Messages = () => {
       }
 
       console.log('👥 Total de leads após filtro:', filteredLeads.length);
+
+      // Aplicar filtro de leads que não receberam mensagem
+      if (onlyUndelivered) {
+        console.log('🔍 Aplicando filtro de leads que não receberam mensagem...');
+        
+        // Buscar leads que já receberam mensagens
+        const { data: recipientsData, error: recipientsError } = await (supabase as any)
+          .from('message_recipients')
+          .select('lead_id')
+          .in('delivery_status', ['sent', 'delivered']);
+
+        if (recipientsError) {
+          console.error('Erro ao buscar destinatários:', recipientsError);
+          throw recipientsError;
+        }
+
+        const leadsWithMessages = new Set(recipientsData?.map((r: any) => r.lead_id) || []);
+        filteredLeads = filteredLeads.filter((lead: any) => !leadsWithMessages.has(lead.id));
+        
+        console.log('👥 Total de leads após filtro de não entregues:', filteredLeads.length);
+      }
 
       if (filteredLeads.length === 0) {
         toast({
@@ -353,7 +373,7 @@ const Messages = () => {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6">
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-blue-600">Central de Mensagens</h1>
