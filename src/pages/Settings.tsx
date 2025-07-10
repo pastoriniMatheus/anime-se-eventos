@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Webhook, Palette, Type, Database, Users, Settings2, Globe } from 'lucide-react';
+import { Webhook, Palette, Type, Database, Users, Settings2, Globe, Package } from 'lucide-react';
 import WebhookSettings from '@/components/WebhookSettings';
 import VisualSettings from '@/components/VisualSettings';
 import FormSettings from '@/components/FormSettings';
@@ -12,6 +12,8 @@ import StatusManager from '@/components/StatusManager';
 import NomenclatureSettings from '@/components/NomenclatureSettings';
 import EnrollmentStatusSettings from '@/components/EnrollmentStatusSettings';
 import APIsSettings from '@/components/APIsSettings';
+import CourseManager from '@/components/CourseManager';
+import PostgraduateCourseManager from '@/components/PostgraduateCourseManager';
 import { useNomenclature } from '@/hooks/useNomenclature';
 import { Layout } from '@/components/Layout';
 
@@ -19,7 +21,7 @@ const Settings = () => {
   const [activeMainTab, setActiveMainTab] = useState('webhooks');
   const [activeSecondaryTab, setActiveSecondaryTab] = useState('webhooks');
   const { courseNomenclature, postgraduateNomenclature } = useNomenclature();
-  const supabaseUrl = "https://iznfrkdsmbtymnifqcdd.supabase.co";
+  const supabaseUrl = "https://iznfrkdsmbtynmifqcdd.supabase.co";
 
   return (
     <Layout>
@@ -29,14 +31,18 @@ const Settings = () => {
       </div>
 
       <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="webhooks" className="flex items-center space-x-2">
             <Webhook className="h-4 w-4" />
             <span>Webhooks & APIs</span>
           </TabsTrigger>
-          <TabsTrigger value="visual" className="flex items-center space-x-2">
+          <TabsTrigger value="personalization" className="flex items-center space-x-2">
             <Palette className="h-4 w-4" />
-            <span>Visual</span>
+            <span>Personalização</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="flex items-center space-x-2">
+            <Package className="h-4 w-4" />
+            <span>{courseNomenclature}</span>
           </TabsTrigger>
           <TabsTrigger value="form" className="flex items-center space-x-2">
             <Settings2 className="h-4 w-4" />
@@ -65,19 +71,41 @@ const Settings = () => {
           </Tabs>
         </TabsContent>
 
-        <TabsContent value="visual">
-          <Tabs defaultValue="colors" className="space-y-4">
+        <TabsContent value="personalization">
+          <Tabs defaultValue="visual" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="colors">Cores e Visual</TabsTrigger>
+              <TabsTrigger value="visual">Cores e Visual</TabsTrigger>
               <TabsTrigger value="nomenclature">Nomenclaturas</TabsTrigger>
+              <TabsTrigger value="status">Status de Leads</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="colors">
+            <TabsContent value="visual">
               <VisualSettings />
             </TabsContent>
 
             <TabsContent value="nomenclature">
               <NomenclatureSettings />
+            </TabsContent>
+
+            <TabsContent value="status">
+              <StatusManager />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="products">
+          <Tabs defaultValue="courses" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="courses">{courseNomenclature}</TabsTrigger>
+              <TabsTrigger value="postgraduate">{postgraduateNomenclature}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="courses">
+              <CourseManager />
+            </TabsContent>
+
+            <TabsContent value="postgraduate">
+              <PostgraduateCourseManager />
             </TabsContent>
           </Tabs>
         </TabsContent>
@@ -100,16 +128,11 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="data">
-          <Tabs defaultValue="status" className="space-y-4">
+          <Tabs defaultValue="export" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="status">Status de Leads</TabsTrigger>
               <TabsTrigger value="export">Exportar/Importar</TabsTrigger>
               <TabsTrigger value="info">Informações do Sistema</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="status">
-              <StatusManager />
-            </TabsContent>
 
             <TabsContent value="export">
               <DatabaseExport />

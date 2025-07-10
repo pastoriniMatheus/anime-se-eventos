@@ -3,9 +3,31 @@ export const generateShortUrl = () => {
   return Math.random().toString(36).substring(2, 8);
 };
 
+// Função para obter a URL do Supabase dinamicamente das configurações do sistema
+const getDynamicSupabaseUrl = (): string => {
+  // Primeiro, tentar obter a URL do cliente Supabase atual
+  if (typeof window !== 'undefined') {
+    // Verificar se existe configuração customizada no localStorage
+    const savedConfig = localStorage.getItem('supabase-config');
+    if (savedConfig) {
+      try {
+        const config = JSON.parse(savedConfig);
+        if (config.url) {
+          return config.url;
+        }
+      } catch (error) {
+        console.warn('Erro ao carregar configuração do Supabase do localStorage:', error);
+      }
+    }
+  }
+  
+  // Fallback para a URL padrão atual do projeto
+  return "https://iznfrkdsmbtynmifqcdd.supabase.co";
+};
+
 export const getShortUrlRedirect = (shortUrl: string) => {
-  // Usar a função edge function do Supabase para redirecionamento
-  return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
+  const supabaseUrl = getDynamicSupabaseUrl();
+  return `${supabaseUrl}/functions/v1/qr-redirect/${shortUrl}`;
 };
 
 export const buildWhatsAppUrl = (whatsappNumber: string, eventName: string, trackingId?: string): string => {
@@ -27,9 +49,10 @@ export const getCurrentDomain = (): string => {
   return '';
 };
 
-// Função para construir URL de redirecionamento para QR codes WhatsApp - CORRIGIDA
+// Função para construir URL de redirecionamento para QR codes WhatsApp - DINAMICA
 export const buildQRRedirectUrl = (shortUrl: string): string => {
-  return `https://dobtquebpcnzjisftcfh.supabase.co/functions/v1/qr-redirect/${shortUrl}`;
+  const supabaseUrl = getDynamicSupabaseUrl();
+  return `${supabaseUrl}/functions/v1/qr-redirect/${shortUrl}`;
 };
 
 // Função para construir URL do formulário com domínio atual

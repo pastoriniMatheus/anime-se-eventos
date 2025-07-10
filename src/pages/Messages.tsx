@@ -56,21 +56,34 @@ const Messages = () => {
     }
   });
 
-  // Buscar contatos que nunca receberam mensagem
+  // Buscar contatos que nunca receberam mensagem - corrigindo a query
   const { data: contactsNeverMessaged = [] } = useQuery({
     queryKey: ['contacts-never-messaged'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Primeiro buscar todos os leads que já receberam mensagem
+      const { data: recipientLeadIds, error: recipientsError } = await supabase
+        .from('message_recipients')
+        .select('lead_id');
+      
+      if (recipientsError) throw recipientsError;
+      
+      const excludeIds = recipientLeadIds?.map(r => r.lead_id) || [];
+      
+      // Buscar leads que não estão na lista de destinatários
+      let query = supabase
         .from('leads')
         .select(`
           id, name, email, whatsapp,
           courses(name),
           events(name),
           lead_statuses(name, color)
-        `)
-        .not('id', 'in', `(
-          SELECT DISTINCT lead_id FROM message_recipients
-        )`);
+        `);
+      
+      if (excludeIds.length > 0) {
+        query = query.not('id', 'in', `(${excludeIds.map(id => `'${id}'`).join(',')})`);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data;
@@ -243,7 +256,7 @@ const Messages = () => {
                         <SelectValue placeholder="Selecione o filtro" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todos os contatos</SelectItem>
+                        <SelectItem value="all">Todos os contatos</SelectItem>
                         <SelectItem value="course">Curso</SelectItem>
                         <SelectItem value="event">Evento</SelectItem>
                         <SelectItem value="status">Status</SelectItem>
@@ -251,7 +264,7 @@ const Messages = () => {
                     </Select>
                   </div>
 
-                  {filterType && (
+                  {filterType && filterType !== 'all' && (
                     <div className="space-y-2">
                       <Label htmlFor="filter-value">
                         {filterType === 'course' && 'Curso'}
