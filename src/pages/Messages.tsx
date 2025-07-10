@@ -148,7 +148,7 @@ const Messages = () => {
     try {
       await sendMessageMutation.mutateAsync({
         message: message.trim(),
-        filterType: filterType === 'all' ? undefined : filterType || undefined,
+        filterType: filterType === 'all' || filterType === '' ? undefined : filterType,
         filterValue: filterValue || undefined,
         sendOnlyToNew
       });
@@ -262,7 +262,7 @@ const Messages = () => {
                     </Select>
                   </div>
 
-                  {filterType && filterType !== '' && filterType !== 'all' && (
+                  {filterType && filterType !== 'all' && filterType !== '' && (
                     <div className="space-y-2">
                       <Label htmlFor="filter-value">
                         {filterType === 'course' && 'Curso'}
