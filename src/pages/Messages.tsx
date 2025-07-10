@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye, Save, Template } from 'lucide-react';
+import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye, Save, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -245,7 +245,7 @@ const Messages = () => {
               <span>Enviar Mensagem</span>
             </TabsTrigger>
             <TabsTrigger value="templates" className="flex items-center space-x-2">
-              <Template className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
               <span>Templates</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center space-x-2">
@@ -433,7 +433,7 @@ const Messages = () => {
               <CardContent>
                 {templates.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <Template className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                     <p>Nenhum template salvo ainda</p>
                     <p className="text-sm">Crie uma mensagem e clique em "Salvar como Template"</p>
                   </div>

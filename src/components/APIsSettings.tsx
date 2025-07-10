@@ -6,11 +6,18 @@ import { Separator } from '@/components/ui/separator';
 import { Globe, Webhook, Database, MessageSquare, QrCode, Users, FileText, Send } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
+interface WebhookUrls {
+  whatsapp?: string;
+  email?: string;
+  whatsappValidation?: string;
+  sync?: string;
+}
+
 const APIsSettings = () => {
   const { data: systemSettings = [] } = useSystemSettings();
   
   const webhookSettings = systemSettings.find(s => s.key === 'webhook_urls');
-  let webhookUrls = {};
+  let webhookUrls: WebhookUrls = {};
   
   if (webhookSettings?.value) {
     try {
