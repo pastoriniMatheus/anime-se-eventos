@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +29,7 @@ const Messages = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
-  const [filterType, setFilterType] = useState<'course' | 'event' | 'status' | ''>('');
+  const [filterType, setFilterType] = useState<'course' | 'event' | 'status' | 'all' | ''>('');
   const [filterValue, setFilterValue] = useState('');
   const [sendOnlyToNew, setSendOnlyToNew] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -150,7 +148,7 @@ const Messages = () => {
     try {
       await sendMessageMutation.mutateAsync({
         message: message.trim(),
-        filterType: filterType || undefined,
+        filterType: filterType === 'all' ? undefined : filterType || undefined,
         filterValue: filterValue || undefined,
         sendOnlyToNew
       });
@@ -264,7 +262,7 @@ const Messages = () => {
                     </Select>
                   </div>
 
-                  {filterType && filterType !== 'all' && (
+                  {filterType && filterType !== 'all' && filterType !== '' && (
                     <div className="space-y-2">
                       <Label htmlFor="filter-value">
                         {filterType === 'course' && 'Curso'}
