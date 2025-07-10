@@ -58,9 +58,11 @@ serve(async (req) => {
     console.log('📤 URL DO WEBHOOK RECEBIDA:', webhook_url);
     console.log('📋 Dados para envio:', {
       type: webhook_data.type,
-      recipients_count: webhook_data.recipients?.length || 0,
       has_content: !!webhook_data.content,
-      delivery_code: webhook_data.delivery_code // Log do delivery_code
+      delivery_code: webhook_data.delivery_code,
+      filter_type: webhook_data.filter_type,
+      filter_value: webhook_data.filter_value,
+      send_only_to_new: webhook_data.send_only_to_new
     });
 
     // Validar se a URL é válida
@@ -80,18 +82,14 @@ serve(async (req) => {
       });
     }
 
-    // Preparar dados incluindo o delivery_code
+    // Preparar dados incluindo o delivery_code e filtros
     const dataToSend = {
       type: webhook_data.type,
       content: webhook_data.content,
-      recipients: webhook_data.recipients?.map(recipient => ({
-        name: recipient.name || 'Nome não informado',
-        whatsapp: recipient.whatsapp || '',
-        email: recipient.email || ''
-      })) || [],
-      total_recipients: webhook_data.recipients?.length || 0,
-      message_id: webhook_data.message_id || null,
-      delivery_code: webhook_data.delivery_code || null, // Incluindo o delivery_code
+      delivery_code: webhook_data.delivery_code || null,
+      filter_type: webhook_data.filter_type || null,
+      filter_value: webhook_data.filter_value || null,
+      send_only_to_new: webhook_data.send_only_to_new || false,
       timestamp: new Date().toISOString()
     };
 
@@ -176,8 +174,7 @@ serve(async (req) => {
         response: responseText,
         webhook_url: webhook_url,
         message: 'Webhook sent successfully',
-        recipients_count: webhook_data.recipients?.length || 0,
-        delivery_code: webhook_data.delivery_code // Retornando o delivery_code na resposta
+        delivery_code: webhook_data.delivery_code
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200

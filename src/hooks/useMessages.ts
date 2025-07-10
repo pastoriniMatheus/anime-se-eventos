@@ -83,3 +83,33 @@ export const useCreateMessageTemplate = () => {
     }
   });
 };
+
+export const useDeleteMessageTemplate = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const { error } = await (supabase as any)
+        .from('message_templates')
+        .delete()
+        .eq('id', templateId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message_templates'] });
+      toast({
+        title: "Template excluído",
+        description: "Template excluído com sucesso!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir template",
+        variant: "destructive",
+      });
+    }
+  });
+};

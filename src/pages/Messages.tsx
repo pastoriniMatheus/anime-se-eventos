@@ -9,11 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye, Save, FileText } from 'lucide-react';
+import { Send, History, Users, MessageSquare, Loader2, CheckCircle, XCircle, Clock, Eye, Save, FileText, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useMessages, useMessageTemplates, useCreateMessageTemplate } from '@/hooks/useMessages';
+import { useMessages, useMessageTemplates, useCreateMessageTemplate, useDeleteMessageTemplate } from '@/hooks/useMessages';
 import { useCourses } from '@/hooks/useCourses';
 import { useEvents } from '@/hooks/useEvents';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -45,6 +45,7 @@ const Messages = () => {
   const { data: events = [] } = useEvents();
   const { data: systemSettings = [] } = useSystemSettings();
   const createTemplateMutation = useCreateMessageTemplate();
+  const deleteTemplateMutation = useDeleteMessageTemplate();
 
   // Buscar status de leads
   const { data: leadStatuses = [] } = useQuery({
@@ -84,7 +85,7 @@ const Messages = () => {
         `);
       
       if (excludeIds.length > 0) {
-        query = query.not('id', 'in', `(${excludeIds.map(id => `'${id}'`).join(',')})`);
+        query = query.not('id', 'in', `(${excludeIds.join(',')})`);
       }
       
       const { data, error } = await query;
@@ -103,13 +104,37 @@ const Messages = () => {
     }) => {
       console.log('Enviando mensagem com parâmetros:', data);
       
-      const { error } = await supabase.functions.invoke('send-webhook', {
+      const webhookSettings = systemSettings.find(s => s.key === 'webhook_urls');
+      let webhookUrl = '';
+      
+      if (webhookSettings?.value) {
+        try {
+          const urls = JSON.parse(webhookSettings.value);
+          webhookUrl = urls.whatsapp || '';
+        } catch (error) {
+          console.error('Erro ao parsear webhook URLs:', error);
+        }
+      }
+
+      if (!webhookUrl) {
+        throw new Error('URL do webhook WhatsApp não configurada');
+      }
+
+      // Construir dados para envio
+      const webhookData = {
+        type: 'whatsapp',
+        content: data.message,
+        recipients: [], // Será preenchido pela edge function
+        filter_type: data.filterType || null,
+        filter_value: data.filterValue || null,
+        send_only_to_new: data.sendOnlyToNew,
+        delivery_code: Math.random().toString(36).substring(2, 15)
+      };
+
+      const { data: response, error } = await supabase.functions.invoke('send-webhook', {
         body: {
-          type: 'whatsapp',
-          message: data.message,
-          filter_type: data.filterType || null,
-          filter_value: data.filterValue || null,
-          send_only_to_new: data.sendOnlyToNew
+          webhook_url: webhookUrl,
+          webhook_data: webhookData
         }
       });
 
@@ -117,6 +142,8 @@ const Messages = () => {
         console.error('Erro ao enviar mensagem:', error);
         throw error;
       }
+
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -192,6 +219,14 @@ const Messages = () => {
       title: "Template carregado",
       description: `Template "${template.name}" foi carregado na mensagem`,
     });
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      await deleteTemplateMutation.mutateAsync(templateId);
+    } catch (error) {
+      console.error('Erro ao excluir template:', error);
+    }
   };
 
   const getWebhookUrl = () => {
@@ -352,7 +387,7 @@ const Messages = () => {
                     </Select>
                   </div>
 
-                  {filterType !== '' && filterType !== 'all' && (
+                  {filterType && filterType !== 'all' && filterType !== '' && (
                     <div className="space-y-2">
                       <Label htmlFor="filter-value">
                         {filterType === 'course' && 'Curso'}
@@ -454,13 +489,23 @@ const Messages = () => {
                               </span>
                             </div>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleLoadTemplate(template)}
-                          >
-                            Usar Template
-                          </Button>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoadTemplate(template)}
+                            >
+                              Usar Template
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteTemplate(template.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
